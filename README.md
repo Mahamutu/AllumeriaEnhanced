@@ -42,13 +42,6 @@ Windows PowerShell:
 ```powershell
 irm https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.ps1 | iex
 ```
-
-Linux with Steam/Proton:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.sh | sh
-```
-
 The Windows installer also reads Steam's registered library folders. For any
 location that is not detected, set `ALLUMERIA_GAME_PATH` to the directory
 containing `Allumeria.exe`. Manual installation and troubleshooting are covered in
