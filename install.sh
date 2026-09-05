@@ -61,7 +61,7 @@ if [ $(ls -1 "$TEMP_EXTRACT" | wc -l) -eq 1 ] && [ -d "$TEMP_EXTRACT"/* ]; then
 fi
 
 echo -e "\033[32mInstalling Allumeria Enhanced into game root...\033[0m"
-cp -r "$SOURCE_DIR"/* "$INSTALL_DIR/"
+cp -r "$SOURCE_DIR" "$INSTALL_DIR/"
 
 # Cleanup
 rm -f "$TEMP_ZIP"
