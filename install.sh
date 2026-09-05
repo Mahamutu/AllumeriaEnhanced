@@ -12,14 +12,13 @@ find_game_dir() {
         return
     fi
 
-    POSSIBLE_PATHS=(
-        "$HOME/.local/share/Steam/steamapps/common/Allumeria"
-        "$HOME/.steam/steam/steamapps/common/Allumeria"
-        "$HOME/.steam/root/steamapps/common/Allumeria"
+    # POSIX-compliant path checking
+    for path in \
+        "$HOME/.local/share/Steam/steamapps/common/Allumeria" \
+        "$HOME/.steam/steam/steamapps/common/Allumeria" \
+        "$HOME/.steam/root/steamapps/common/Allumeria" \
         "/run/media/mmcblk0p1/steamapps/common/Allumeria"
-    )
-
-    for path in "${POSSIBLE_PATHS[@]}"; do
+    do
         if [ -d "$path" ]; then
             echo "$path"
             return
@@ -32,7 +31,7 @@ find_game_dir() {
 INSTALL_DIR=$(find_game_dir)
 
 if [ -z "$INSTALL_DIR" ]; then
-    echo -e "\031[31mError: Could not automatically locate the Allumeria installation folder.\033[0m"
+    echo -e "\033[31mError: Could not automatically locate the Allumeria installation folder.\033[0m"
     echo "Please set ALLUMERIA_GAME_PATH to your game directory and run this script again."
     exit 1
 fi
