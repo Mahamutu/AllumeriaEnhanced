@@ -103,3 +103,7 @@ rather than OSI-approved open-source software. Allumeria and its game assets
 remain the property of their respective owners and are not licensed here.
 
 Polish documentation is available in [README_PL.md](README_PL.md).
+
+## Credits & Assets
+
+* **Kiwi Soda Font** by [jeti](https://fontenddev.com/fonts/kiwi-soda/) (used in header banner) – Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
