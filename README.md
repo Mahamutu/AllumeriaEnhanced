@@ -1,4 +1,4 @@
- ![Image Alt]([image_url](https://github.com/Mahamutu/AllumeriaEnhanced/blob/main/Allumeria%20Enhanced%20banner.png?raw=true))
+![Image Alt]([image_url](https://github.com/Mahamutu/AllumeriaEnhanced/blob/main/Allumeria%20Enhanced%20banner.png?raw=true))
 
 Created by **Mahamutu**.
 
