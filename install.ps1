@@ -82,7 +82,7 @@ $ArchiveUrl = $Asset.browser_download_url
 $TempZip = Join-Path $env:TEMP "AllumeriaEnhanced_latest.zip"
 $TempExtract = Join-Path $env:TEMP "AllumeriaEnhanced_Extract"
 
-Write-Host "Downloading latest Allumeria Enhanced release ($($Asset.name))..." -ForegroundColor Cyan
+Write-Host "Downloading latest release ($($Asset.name))..." -ForegroundColor Cyan
 Invoke-WebRequest -UseBasicParsing -UserAgent $UserAgent -Uri $ArchiveUrl -OutFile $TempZip
 
 if (Test-Path $TempExtract) {
@@ -92,27 +92,20 @@ if (Test-Path $TempExtract) {
 Write-Host "Extracting files..." -ForegroundColor Cyan
 Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
 
-$SourcePath = $TempExtract
-$ChildItems = Get-ChildItem $TempExtract
-if ($ChildItems.Count -eq 1 -and $ChildItems[0].PSIsContainer) {
-    $SourcePath = $ChildItems[0].FullName
-}
-
-$TargetShadersDir = Join-Path $InstallDir "res\shaders"
-
-# Ensure target directory structure exists
-if (-not (Test-Path $TargetShadersDir)) {
-    New-Item -ItemType Directory -Path $TargetShadersDir -Force | Out-Null
+# Resolve nested directory if the ZIP wrapped everything in a single subfolder
+$ExtractItems = Get-ChildItem -Path $TempExtract
+if ($ExtractItems.Count -eq 1 -and $ExtractItems[0].PSIsContainer) {
+    $SourcePath = $ExtractItems[0].FullName
 } else {
-    $BackupDir = Join-Path $InstallDir "res\shaders_backup"
-    if (-not (Test-Path $BackupDir)) {
-        Write-Host "Creating backup of original shaders at: $BackupDir" -ForegroundColor Yellow
-        Copy-Item -Path $TargetShadersDir -Destination $BackupDir -Recurse -Force
-    }
+    $SourcePath = $TempExtract
 }
 
-Write-Host "Installing shader files into: $TargetShadersDir" -ForegroundColor Green
-Copy-Item -Path "$SourcePath\*" -Destination $TargetShadersDir -Recurse -Force
+Write-Host "Installing files into game root: $InstallDir" -ForegroundColor Green
+
+# Copy all items directly into the game root folder
+Get-ChildItem -Path $SourcePath | ForEach-Object {
+    Copy-Item -Path $_.FullName -Destination $InstallDir -Recurse -Force
+}
 
 # Cleanup
 Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
