@@ -1,5 +1,40 @@
 # Installation
 
+## One-command installation
+
+Close Allumeria before installing.
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.ps1 | iex
+```
+
+Linux with the Windows game running through Steam/Proton:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.sh | sh
+```
+
+For a non-standard Steam library, set the game directory explicitly:
+
+```powershell
+$env:ALLUMERIA_GAME_PATH = 'D:\SteamLibrary\steamapps\common\Allumeria'
+irm https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.ps1 | iex
+```
+
+```sh
+ALLUMERIA_GAME_PATH="/mnt/games/SteamLibrary/steamapps/common/Allumeria" \
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.sh)"
+```
+
+The Windows installer checks Steam's registered library folders automatically.
+The installers download
+`Allumeria-Enhanced-Aurora-Classic-current.zip` from the latest GitHub
+release, preserve `res/shaders` on first installation and move an existing
+shader-pack directory to a timestamped backup before installing Aurora and
+Classic.
+
 ## Release archive
 
 1. Close Allumeria completely.
@@ -33,6 +68,12 @@ Build the loader as described in the main README, then run:
 
 ```powershell
 .\install.ps1 -GamePath "C:\path\to\Allumeria"
+```
+
+On Linux:
+
+```sh
+./install.sh --game-path "/path/to/steamapps/common/Allumeria"
 ```
 
 The installer preserves `res/shaders` as the local baseline the first time it

@@ -5,7 +5,8 @@ Creator: **mahamutu**
 ## About description
 
 Atmospheric shader loader and two raster shader packs for Allumeria 0.15, with
-dynamic shadows, volumetric light, custom clouds and enhanced water.
+dynamic shadows, volumetric light, custom clouds, enhanced water and one-command
+installation on Windows or Linux/Proton.
 
 ## Suggested topics
 
@@ -22,4 +23,5 @@ that stays closer to the original presentation. The release includes custom
 
 The project was created by mahamutu and is source available under PolyForm
 Noncommercial 1.0.0. Commercial use is not permitted without separate
-authorization.
+authorization. Installers for Windows PowerShell and Linux/Steam Proton download
+the latest release automatically and preserve the original game shaders.

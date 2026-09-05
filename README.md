@@ -29,16 +29,32 @@ tracing.
 
 ## Requirements
 
-- Allumeria 0.15 for Windows;
+- Allumeria 0.15 for Windows, or the Windows release running through Steam
+  Proton on Linux;
 - an OpenGL 3.3 compatible graphics card;
 - a clean or backed-up copy of the game's original `res/shaders` directory.
 
 ## Installation
 
-Download the current release archive and follow
-[docs/INSTALLATION.md](docs/INSTALLATION.md). Close the game before replacing
-`Loader.dll`. Press **F8** to reload edited shader files; loader updates require
-a full game restart.
+Close Allumeria, then use one of these commands.
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.ps1 | iex
+```
+
+Linux with Steam/Proton:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Mahamutu/AllumeriaEnhanced/main/install.sh | sh
+```
+
+The Windows installer also reads Steam's registered library folders. For any
+location that is not detected, set `ALLUMERIA_GAME_PATH` to the directory
+containing `Allumeria.exe`. Manual installation and troubleshooting are covered in
+[docs/INSTALLATION.md](docs/INSTALLATION.md). Press **F8** to reload edited
+shader files; loader updates require a full game restart.
 
 ## Shader packs
 
@@ -59,6 +75,7 @@ shaderpacks/Classic/    Classic icon, manifest and shaders
 src/                    C# loader source
 docs/                   English documentation
 install.ps1             Source-checkout installer
+install.sh              Linux/Steam Proton installer
 uninstall.ps1           Restores the backed-up original shaders
 ```
 

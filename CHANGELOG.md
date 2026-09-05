@@ -2,6 +2,8 @@
 
 ## 0.13.2 - 2026-09-05
 
+- Added one-command installers for Windows PowerShell and Linux/Steam Proton.
+- Added automatic Steam-path detection and safe shader-pack backups.
 - Reduced Aurora's GPU cost by caching directional and local shadow maps,
   lowering the local shadow cubemap resolution and throttling stable redraws.
 - Reduced volumetric cloud, god-ray, reflection, underwater-particle and AO

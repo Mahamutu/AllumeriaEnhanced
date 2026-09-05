@@ -14,7 +14,13 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $packs = Get-ChildItem shaderpacks -Directory
-          if ($packs.Count -lt 4) { throw 'Expected at least four shader packs.' }
+          $expected = @('Aurora', 'Classic')
+          if ($packs.Count -ne $expected.Count) { throw 'Expected exactly Aurora and Classic.' }
+          foreach ($name in $expected) {
+            if (-not (Test-Path (Join-Path 'shaderpacks' $name))) {
+              throw "Missing shader pack: $name"
+            }
+          }
           foreach ($pack in $packs) {
             $manifest = Get-Content -Raw (Join-Path $pack.FullName 'pack.json') | ConvertFrom-Json
             if (-not $manifest.name) { throw "Missing pack name: $($pack.Name)" }
@@ -34,3 +40,19 @@ jobs:
               }
             } finally { $image.Dispose() }
           }
+      - name: Validate PowerShell installer syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'install.ps1'), [ref]$tokens, [ref]$errors
+          ) | Out-Null
+          if ($errors.Count) { throw ($errors | Out-String) }
+
+  validate-linux-installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Linux installer syntax
+        run: sh -n install.sh
