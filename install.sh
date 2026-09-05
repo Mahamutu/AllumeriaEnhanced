@@ -7,19 +7,21 @@ USER_AGENT="Mozilla/5.0 (X11; Linux x86_64) AllumeriaInstaller"
 
 # Locate Game Directory
 find_game_dir() {
-    if [ -n "$ALLUMERIA_GAME_PATH" ] && [ -d "$ALLUMERIA_GAME_PATH" ]; then
+    if [ -n "$ALLUMERIA_GAME_PATH" ] && [ -f "$ALLUMERIA_GAME_PATH/Allumeria.exe" ]; then
         echo "$ALLUMERIA_GAME_PATH"
         return
     fi
 
-    # POSIX-compliant path checking
+    # Check common Steam library paths for Allumeria.exe
     for path in \
         "$HOME/.local/share/Steam/steamapps/common/Allumeria" \
         "$HOME/.steam/steam/steamapps/common/Allumeria" \
         "$HOME/.steam/root/steamapps/common/Allumeria" \
-        "/run/media/mmcblk0p1/steamapps/common/Allumeria"
+        "/run/media/mmcblk0p1/steamapps/common/Allumeria" \
+        "/media/$USER/*/steamapps/common/Allumeria" \
+        "/mnt/*/steamapps/common/Allumeria"
     do
-        if [ -d "$path" ]; then
+        if [ -f "$path/Allumeria.exe" ]; then
             echo "$path"
             return
         fi
@@ -31,12 +33,12 @@ find_game_dir() {
 INSTALL_DIR=$(find_game_dir)
 
 if [ -z "$INSTALL_DIR" ]; then
-    echo -e "\033[31mError: Could not automatically locate the Allumeria installation folder.\033[0m"
+    echo -e "\033[31mError: Could not automatically locate Allumeria.exe in Steam folders.\033[0m"
     echo "Please set ALLUMERIA_GAME_PATH to your game directory and run this script again."
     exit 1
 fi
 
-echo -e "\033[32mFound Allumeria directory at: $INSTALL_DIR\033[0m"
+echo -e "\033[32mFound Allumeria game directory at: $INSTALL_DIR\033[0m"
 
 # Fetch Latest Release from GitHub API
 API_URL="https://api.github.com/repos/$REPO_USER/$REPO_NAME/releases/latest"
