@@ -65,7 +65,8 @@ installation if you want to retain personal values.
 Build the loader as described in the main README, then run:
 
 ```powershell
-.\install.ps1 -GamePath "C:\path\to\Allumeria"
+$env:ALLUMERIA_GAME_PATH = "C:\path\to\Allumeria"
+.\install.ps1
 ```
 
 On Linux:
