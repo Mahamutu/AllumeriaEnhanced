@@ -17,6 +17,7 @@ uniform float ae_enabled;
 uniform vec3 ae_sunDirection;
 uniform float ae_cloudTime;
 uniform vec3 ae_cloudTint;
+uniform int ae_raySteps;
 float cloudHash(vec2 p) {
     return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
 }
@@ -35,7 +36,7 @@ float cloudDensityAt(vec3 p){
 vec4 pixelCloudVolume(vec3 ray) {
     if(abs(ray.y)<0.008) return vec4(0);
     float a=(256.0-viewPos.y)/ray.y, b=(288.0-viewPos.y)/ray.y;
-    float enter=max(min(a,b),0.0), leave=min(max(a,b),1600.0);
+    float enter=max(min(a,b),0.0), leave=min(max(a,b),900.0);
     if(leave<=enter) return vec4(0);
     // Traverse actual rectangular cells, not smooth density samples.
     vec3 cellSize=vec3(8.0,4.0,8.0);
@@ -49,7 +50,9 @@ vec4 pixelCloudVolume(vec3 ray) {
     vec3 nextT=(boundary-origin)/safeRay;
     vec3 deltaT=abs(cellSize/safeRay);
     vec3 faceNormal=vec3(0,-sign(ray.y),0);
-    for(int i=0;i<384;i++){
+    int cloudSteps=clamp(ae_raySteps*4,48,128);
+    for(int i=0;i<128;i++){
+        if(i>=cloudSteps)break;
         if(t>=leave) break;
         vec3 center=(cell+0.5)*cellSize;
         vec2 footprint=(floor(center.xz/32.0)+0.5)*32.0;
@@ -79,9 +82,9 @@ vec4 pixelCloudVolume(vec3 ray) {
             vec3 sunlight=mix(vec3(1.0,0.78,0.52),vec3(1.0,0.98,0.92),smoothstep(0.03,0.45,ae_sunDirection.y));
             vec3 ambient=mix(vec3(0.035,0.042,0.065),vec3(0.72,0.765,0.82),daylight);
             float optical=0.0;
-            for(int k=0;k<4;k++){
-                vec3 probe=center+normalize(ae_sunDirection)*(4.0+float(k)*8.0);
-                optical+=cloudDensityAt(probe)*8.0*0.075;
+            for(int k=0;k<2;k++){
+                vec3 probe=center+normalize(ae_sunDirection)*(6.0+float(k)*12.0);
+                optical+=cloudDensityAt(probe)*12.0*0.10;
             }
             float sunTransmission=exp(-optical);
             float mu=clamp(dot(ray,normalize(ae_sunDirection)),-1.0,1.0);
@@ -108,7 +111,7 @@ vec4 pixelCloudVolume(vec3 ray) {
             t=nextT.z;nextT.z+=deltaT.z;cell.z+=stepDir.z;faceNormal=vec3(0,0,-stepDir.z);
         }
     }
-    float fade=1.0-smoothstep(650.0,1450.0,enter);
+    float fade=1.0-smoothstep(450.0,850.0,enter);
     return vec4(accumulated*fade,(1.0-transmittance)*fade);
 }
 

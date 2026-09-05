@@ -8,6 +8,7 @@ in vec4 vertexCol;
 in vec3 fragPosition;
 
 uniform sampler2D texture0;
+uniform vec3 ae_handLightColor;
 uniform vec4 fogColor;
 uniform vec4 fogMidColor;
 uniform float fogStart;
@@ -20,6 +21,7 @@ uniform float ae_contrast;
 uniform float ae_warmth;
 uniform float ae_fogStrength;
 uniform float ae_biomeFog;
+uniform float ae_biomeWarmth;
 
 vec3 gradeColor(vec3 color)
 {
@@ -57,6 +59,8 @@ vec3 atmosphericScattering(vec3 viewRay, float distanceToCamera)
     vec3 baseAtmosphere = mix(fogColor.rgb, fogMidColor.rgb, clamp(abs(viewRay.y) * 1.6, 0.0, 1.0));
     float atmosphereLuma=dot(baseAtmosphere,vec3(0.2126,0.7152,0.0722));
     baseAtmosphere=mix(vec3(atmosphereLuma),baseAtmosphere,0.65);
+    float desertDay=ae_biomeWarmth*smoothstep(0.02,0.28,ae_sunDirection.y);
+    baseAtmosphere=mix(baseAtmosphere,baseAtmosphere*vec3(1.05,1.0,0.76),desertDay*0.78);
     vec3 rayleigh = vec3(0.135, 0.16, 0.19) * rayleighPhase * horizon * 0.20;
     vec3 mie = vec3(1.0, 0.55, 0.22) * miePhase * 0.014 * (0.3 + horizon * 0.7);
     // Low-amplitude directional gradient, coloured by the native biome/day palette.
@@ -100,7 +104,7 @@ uniform float ae_waterSurface;
 uniform float ae_cloudTime;
 vec3 underwaterParticles(vec3 ray,float sceneDistance) {
     if(ae_underwater<0.5)return vec3(0);
-    float limit=min(sceneDistance,18.0);
+    float limit=min(sceneDistance,14.0);
     if(ray.y>0.001)limit=min(limit,max((ae_waterSurface-viewPos.y)/ray.y,0.0));
     vec3 origin=viewPos-vec3(0,ae_cloudTime*0.08,0);
     vec3 cell=floor(origin/0.8), stepDir=sign(ray);
@@ -108,7 +112,7 @@ vec3 underwaterParticles(vec3 ray,float sceneDistance) {
     vec3 nextT=((cell+step(vec3(0),ray))*0.8-origin)/safeRay;
     vec3 deltaT=abs(vec3(0.8)/safeRay);
     float t=0.0, glow=0.0;
-    for(int i=0;i<40;i++){
+    for(int i=0;i<16;i++){
         if(t>limit)break;
         float seed=fract(sin(dot(cell,vec3(17.13,61.7,29.3)))*43758.5453);
         if(seed>0.72){
@@ -134,7 +138,11 @@ vec3 underwaterParticles(vec3 ray,float sceneDistance) {
 void main()
 {
     ae_objectMask=vec4(ae_isHand,0,0,1);
-    vec4 texel = texture(texture0, texCoord) * vertexCol;
+    vec4 sourceTexel = texture(texture0, texCoord);
+    vec4 texel = sourceTexel * vertexCol;
+    float heldEmitter=max(ae_handLightColor.r,max(ae_handLightColor.g,ae_handLightColor.b));
+    vec3 heldTint=ae_handLightColor/max(heldEmitter,0.001);
+    texel.rgb=max(texel.rgb,sourceTexel.rgb*(vec3(0.34)+heldTint*0.46)*ae_isHand*step(0.01,heldEmitter));
     if (texel.a < 0.5)
         discard;
     float d = length(viewPos - fragPosition);

@@ -1,21 +1,24 @@
 {
   "name": "Aurora",
-  "version": "0.13.0-test",
+  "version": "0.13.2",
   "description": "Advanced raster experiment: post-processing, cloud self-shadowing, atmospheric scattering, chromatic water absorption and foliage wrap lighting.",
   "icon": "icon.png",
   "settings": {
     "PostProcessing": true,
-    "AmbientOcclusion": 0.55,
-    "Sharpening": 0.35,
+    "AmbientOcclusion": 0.35,
+    "Sharpening": 0.25,
     "DepthOfField": false,
-    "ShadowResolution": 4096,
-    "ShadowDistance": 144,
+    "ShadowResolution": 2048,
+    "ShadowDistance": 96,
     "ShadowStrength": 1.0,
-    "ShadowSoftness": 0.9,
+    "ShadowSoftness": 0.65,
     "FogStrength": 0.9,
     "Saturation": 1.04,
     "Contrast": 1.15,
     "MoonRayStrength": 1.35,
-    "CloudShadowStrength": 0.14
+    "CloudShadowStrength": 0.12,
+    "Reflections": true,
+    "ReflectionStrength": 0.72,
+    "RaySteps": 16
   }
 }

@@ -16,34 +16,32 @@ uniform float ae_moonStrength;
 uniform float ae_moonRayStrength;
 uniform float ae_warmth;
 uniform float ae_underwater;
+uniform float ae_biomeWarmth;
 
 uniform sampler2D ae_shadowMap;
 uniform float ae_shadowMapEnabled;
 // Single scattering integrated along the camera ray, occluded by the shadow map.
 uniform mat4 ae_lightViewProjection;
 uniform float ae_morningRays;
+uniform int ae_raySteps;
 vec3 volumetricShafts(vec3 ray, float rayLength)
 {
     if (ae_shadowMapEnabled < 0.5 || ae_underwater > 0.5) return vec3(0.0);
     float lengthInFog = min(rayLength, 96.0);
-    float ds = lengthInFog / 48.0;
+    int shaftSteps=clamp(ae_raySteps,12,24);
+    float ds = lengthInFog / float(shaftSteps);
     float illumination = 0.0;
-    for (int i = 0; i < 48; ++i)
+    for (int i = 0; i < 24; ++i)
     {
+        if(i>=shaftSteps)break;
         float jitter=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);
         float travel = (float(i) + 0.25 + 0.5*jitter) * ds;
         vec4 light = vec4(viewPos + ray * travel, 1.0) * ae_lightViewProjection;
         vec3 uvz = light.xyz / light.w * 0.5 + 0.5;
         if (all(greaterThan(uvz, vec3(0.001))) && all(lessThan(uvz, vec3(0.999))))
         {
-            vec2 size=vec2(textureSize(ae_shadowMap,0));
-            vec2 pixel=uvz.xy*size-0.5;ivec2 cell=ivec2(floor(pixel));
-            vec2 f=fract(pixel);float visible=0.0;
-            for(int sx=0;sx<2;sx++)for(int sy=0;sy<2;sy++){
-                float depth=texelFetch(ae_shadowMap,clamp(cell+ivec2(sx,sy),ivec2(0),ivec2(size)-1),0).r;
-                float w=(sx==0?1.0-f.x:f.x)*(sy==0?1.0-f.y:f.y);
-                visible+=smoothstep(-0.0002,0.0002,depth-uvz.z)*w;
-            }
+            float depth=texture(ae_shadowMap,uvz.xy).r;
+            float visible=smoothstep(-0.00035,0.00035,depth-uvz.z);
             illumination += visible * exp(-travel * 0.012) * ds * 0.012;
         }
     }
@@ -78,7 +76,7 @@ float cloudDensityAt(vec3 p){
 vec4 pixelCloudVolume(vec3 ray) {
     if(abs(ray.y)<0.008) return vec4(0);
     float a=(256.0-viewPos.y)/ray.y, b=(288.0-viewPos.y)/ray.y;
-    float enter=max(min(a,b),0.0), leave=min(max(a,b),1600.0);
+    float enter=max(min(a,b),0.0), leave=min(max(a,b),900.0);
     if(leave<=enter) return vec4(0);
     // Traverse actual rectangular cells, not smooth density samples.
     vec3 cellSize=vec3(8.0,4.0,8.0);
@@ -92,7 +90,9 @@ vec4 pixelCloudVolume(vec3 ray) {
     vec3 nextT=(boundary-origin)/safeRay;
     vec3 deltaT=abs(cellSize/safeRay);
     vec3 faceNormal=vec3(0,-sign(ray.y),0);
-    for(int i=0;i<384;i++){
+    int cloudSteps=clamp(ae_raySteps*4,48,128);
+    for(int i=0;i<128;i++){
+        if(i>=cloudSteps)break;
         if(t>=leave) break;
         vec3 center=(cell+0.5)*cellSize;
         vec2 footprint=(floor(center.xz/32.0)+0.5)*32.0;
@@ -122,9 +122,9 @@ vec4 pixelCloudVolume(vec3 ray) {
             vec3 sunlight=mix(vec3(1.0,0.78,0.52),vec3(1.0,0.98,0.92),smoothstep(0.03,0.45,ae_sunDirection.y));
             vec3 ambient=mix(vec3(0.035,0.042,0.065),vec3(0.72,0.765,0.82),daylight);
             float optical=0.0;
-            for(int k=0;k<4;k++){
-                vec3 probe=center+normalize(ae_sunDirection)*(4.0+float(k)*8.0);
-                optical+=cloudDensityAt(probe)*8.0*0.075;
+            for(int k=0;k<2;k++){
+                vec3 probe=center+normalize(ae_sunDirection)*(6.0+float(k)*12.0);
+                optical+=cloudDensityAt(probe)*12.0*0.10;
             }
             float sunTransmission=exp(-optical);
             float mu=clamp(dot(ray,normalize(ae_sunDirection)),-1.0,1.0);
@@ -151,7 +151,7 @@ vec4 pixelCloudVolume(vec3 ray) {
             t=nextT.z;nextT.z+=deltaT.z;cell.z+=stepDir.z;faceNormal=vec3(0,0,-stepDir.z);
         }
     }
-    float fade=1.0-smoothstep(650.0,1450.0,enter);
+    float fade=1.0-smoothstep(450.0,850.0,enter);
     return vec4(accumulated*fade,(1.0-transmittance)*fade);
 }
 void main()
@@ -177,6 +177,8 @@ void main()
     vec3 scattered = vertexCol.rgb + (rayleigh + mie*0.25) * ae_fogStrength*sunVisibility*waterVisibility
         + volumetricShafts(viewDirection,96.0)*waterVisibility;
     scattered += vec3(0.32, 0.09, 0.015) * horizon * (1.0 - clamp(ae_sunDirection.y, 0.0, 1.0)) * 0.24;
+    float desertDay=ae_biomeWarmth*sunVisibility;
+    scattered=mix(scattered,scattered*vec3(1.045,1.0,0.76),desertDay*0.78);
     scattered *= vec3(1.0 + ae_warmth * 0.03, 1.0, 1.0 - ae_warmth * 0.025);
     scattered = scattered / (1.0 + max(scattered - vec3(0.86), vec3(0.0)) * 0.8);
     float moonAlignment=clamp(dot(viewDirection,ae_moonDirection),-1.0,1.0);

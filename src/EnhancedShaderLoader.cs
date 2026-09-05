@@ -91,6 +91,10 @@ public sealed class EnhancedShaderLoader : IExternalLoader
     private static Vector3 ShadowDirection = Vector3.UnitY;
     private static bool ShadowMapActive;
     private static DateTime LastShadowDiagnostic;
+    private static DateTime LastShadowRender = DateTime.MinValue;
+    private static Vector3 LastShadowCenter;
+    private static Vector3 LastRenderedShadowDirection = Vector3.UnitY;
+    private static float LastShadowRadius;
 
     public void Init()
     {
@@ -431,7 +435,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
     private static readonly System.Reflection.FieldInfo? WorldRendererField =
         typeof(Game).GetField("worldRenderer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
     private static Vector3 CloudTint = Vector3.One;
-    private static float BiomeFog = 1f;
+    private static float BiomeFog = 1f, BiomeWarmth;
     private static float Underwater, WaterSurface, MoonStrength, MoonPhase, MoonIllumination, MorningRays;
     private static Vector3 MoonDirection=Vector3.UnitY;
     private static void UpdateEnvironment(double dt)
@@ -465,6 +469,8 @@ public sealed class EnhancedShaderLoader : IExternalLoader
             (int)MathF.Floor(pos.X), (int)MathF.Floor(pos.Y), (int)MathF.Floor(pos.Z));
         float target = biome switch { 2 => 1.12f, 3 => 0.85f, 4 => 0.45f, 5 => 1.18f, 6 => 0.8f, 7 => 0.65f, _ => 1f };
         BiomeFog += (target - BiomeFog) * (1f - MathF.Exp(-(float)Math.Clamp(dt,0,0.1)*0.8f));
+        float warmthTarget = biome == 3 ? 1f : 0f;
+        BiomeWarmth += (warmthTarget - BiomeWarmth) * (1f - MathF.Exp(-(float)Math.Clamp(dt,0,0.1)*0.9f));
     }
 
     private static int ViewModelMask, MaskWidth, MaskHeight, MaskFramebuffer;
@@ -572,6 +578,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
         shader.SetUniform1i("ae_localShadow", 7);
         shader.SetUniformFloat("ae_localActive", LocalShadowActive ? 1f : 0f);
         shader.SetUniformVec3("ae_localPosition", LocalPosition);
+        shader.SetUniformVec3("ae_localShadowPosition", LocalShadowActive ? LastRenderedLocalPosition : LocalPosition);
         shader.SetUniformVec3("ae_localColor", LocalColor);
         bool heldEmitter=Game.clientState?.player?.heldItem?.block?.emitsLight==true;
         float sourceDistance=(Game.camera.position-LocalPosition).Length;
@@ -589,6 +596,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
         shader.SetUniformFloat("ae_cloudTime", (float)Game.secondsElapsed);
         shader.SetUniformVec3("ae_cloudTint", CloudTint);
         shader.SetUniformFloat("ae_biomeFog", BiomeFog);
+        shader.SetUniformFloat("ae_biomeWarmth", BiomeWarmth);
         shader.SetUniform1i("ae_viewModelMask",8);
         shader.SetUniformFloat("ae_maskReady",ViewModelMask!=0?1f:0f);
         shader.SetUniformFloat("ae_firstPerson",Game.clientState?.player?.thirdPerson==false?1f:0f);
@@ -622,6 +630,9 @@ public sealed class EnhancedShaderLoader : IExternalLoader
     private static DateTime LastLocalScan;
     private static Vector3 CachedLocalPosition, CachedLocalColor;
     private const float LocalRange = 16f;
+    private const int LocalShadowResolution = 256;
+    private static DateTime LastLocalShadowRender = DateTime.MinValue;
+    private static Vector3 LastRenderedLocalPosition, LastRenderedLocalColor;
 
     // Existing loaded geometry only: never create chunks or depend on camera frustum.
     private static IEnumerable<Chunk> LocalCasters(Vector3 light, float range)
@@ -681,6 +692,17 @@ public sealed class EnhancedShaderLoader : IExternalLoader
         }
         if(LocalColor.LengthSquared < 0.001f) return;
         EnsureShadowResources();
+        DateTime now=DateTime.UtcNow;
+        bool heldEmitter=held?.emitsLight==true;
+        double updateInterval=heldEmitter?0.05:0.20;
+        bool reusable=LocalCube!=0 &&
+            (LocalPosition-LastRenderedLocalPosition).LengthSquared<(heldEmitter?0.0225f:0.01f) &&
+            (LocalColor-LastRenderedLocalColor).LengthSquared<0.0001f;
+        if(reusable && (now-LastLocalShadowRender).TotalSeconds<updateInterval)
+        {
+            LocalShadowActive=true;
+            return;
+        }
         int framebuffer, active, program, depthFunction;
         GL.GetInteger(GetPName.FramebufferBinding,out framebuffer);
         GL.GetInteger(GetPName.ActiveTexture,out active);
@@ -697,7 +719,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
                 GL.BindTexture(TextureTarget.TextureCubeMap,LocalCube);
                 for(int face=0;face<6;face++)
                     GL.TexImage2D((TextureTarget)((int)TextureTarget.TextureCubeMapPositiveX+face),0,
-                        PixelInternalFormat.DepthComponent24,512,512,0,PixelFormat.DepthComponent,PixelType.Float,IntPtr.Zero);
+                        PixelInternalFormat.DepthComponent24,LocalShadowResolution,LocalShadowResolution,0,PixelFormat.DepthComponent,PixelType.Float,IntPtr.Zero);
                 GL.TexParameter(TextureTarget.TextureCubeMap,TextureParameterName.TextureMinFilter,(int)TextureMinFilter.Nearest);
                 GL.TexParameter(TextureTarget.TextureCubeMap,TextureParameterName.TextureMagFilter,(int)TextureMagFilter.Nearest);
                 GL.TexParameter(TextureTarget.TextureCubeMap,TextureParameterName.TextureWrapS,(int)TextureWrapMode.ClampToEdge);
@@ -706,7 +728,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
             }
             GL.BindFramebuffer(FramebufferTarget.Framebuffer,LocalFramebuffer);
             GL.DrawBuffer(DrawBufferMode.None);GL.ReadBuffer(ReadBufferMode.None);
-            GL.Viewport(0,0,512,512);
+            GL.Viewport(0,0,LocalShadowResolution,LocalShadowResolution);
             GL.ColorMask(false,false,false,false);GL.DepthMask(true);GL.Enable(EnableCap.DepthTest);
             GL.DepthFunc(DepthFunction.Less);GL.Disable(EnableCap.Blend);GL.Disable(EnableCap.CullFace);
             Vector3[] directions={Vector3.UnitX,-Vector3.UnitX,Vector3.UnitY,-Vector3.UnitY,Vector3.UnitZ,-Vector3.UnitZ};
@@ -738,6 +760,9 @@ public sealed class EnhancedShaderLoader : IExternalLoader
                 }
             }
             LocalShadowActive=true;
+            LastLocalShadowRender=now;
+            LastRenderedLocalPosition=LocalPosition;
+            LastRenderedLocalColor=LocalColor;
         }
         finally
         {
@@ -753,43 +778,62 @@ public sealed class EnhancedShaderLoader : IExternalLoader
     }
     private static void RenderShadowMap(double deltaTime)
     {
-        ShadowMapActive = false;
         if (!Settings.Enabled || !Settings.ShadowMaps || !Game.mainLoadDone || !Game.threadedLoadDone ||
             !Game.inGame || Game.gameState?.worldManager.world == null || MultiChunkRenderer.chunksToRender.Count == 0)
+        {
+            ShadowMapActive = false;
             return;
+        }
 
         float day = (float)Game.gameState.worldManager.world.timeManager.worldTime / 86400f;
         if (SunDirection.Y < 0.02f && MoonStrength < 0.02f)
+        {
+            ShadowMapActive = false;
             return;
+        }
 
         EnsureShadowResources();
         if (ShadowDepthShader == null || ShadowFramebuffer == 0)
+        {
+            ShadowMapActive = false;
             return;
+        }
 
         Matrix4 sunRotation = Matrix4.Mult(Matrix4.CreateRotationX(day * MathF.PI * 2f),
             Matrix4.CreateRotationY(MathF.PI / 10f));
         Vector3 targetShadowDirection = SunDirection.Y > 0.02f ? SunDirection : MoonDirection;
+        Vector3 candidateShadowDirection;
         if (!SunDirectionInitialised || Vector3.Dot(ShadowDirection, targetShadowDirection) < 0.5f)
         {
-            ShadowDirection = targetShadowDirection;
+            candidateShadowDirection = targetShadowDirection;
             SunDirectionInitialised = true;
         }
         else
         {
             float sunSmoothing = 1f - MathF.Exp(-8f * (float)Math.Clamp(deltaTime, 0.0, 0.1));
-            ShadowDirection = Vector3.Lerp(ShadowDirection, targetShadowDirection, sunSmoothing).Normalized();
+            candidateShadowDirection = Vector3.Lerp(ShadowDirection, targetShadowDirection, sunSmoothing).Normalized();
         }
         float radius = Clamp(Settings.ShadowDistance, 32f, 256f);
         float texelWorldSize = radius * 2f / CurrentShadowResolution;
         Vector3 center = Game.camera.position;
         Vector3 up = Vector3.UnitZ; // Fixed basis avoids a discontinuous rotation near noon.
-        Vector3 lightForward = -ShadowDirection;
+        Vector3 lightForward = -candidateShadowDirection;
         Vector3 lightRight = Vector3.Cross(lightForward, up).Normalized();
         Vector3 lightUp = Vector3.Cross(lightRight, lightForward).Normalized();
         float rightCoordinate = Vector3.Dot(center, lightRight);
         float upCoordinate = Vector3.Dot(center, lightUp);
         center += lightRight * (MathF.Round(rightCoordinate / texelWorldSize) * texelWorldSize - rightCoordinate);
         center += lightUp * (MathF.Round(upCoordinate / texelWorldSize) * texelWorldSize - upCoordinate);
+        DateTime now=DateTime.UtcNow;
+        double sinceLast=(now-LastShadowRender).TotalSeconds;
+        bool stableCenter=(center-LastShadowCenter).LengthSquared<MathF.Max(texelWorldSize*texelWorldSize*9f,0.04f);
+        bool stableDirection=Vector3.Dot(LastRenderedShadowDirection,candidateShadowDirection)>0.9998f;
+        bool reusable=ShadowMapActive && MathF.Abs(LastShadowRadius-radius)<0.01f;
+        // Shadow rendering redraws every visible chunk. Cap it at 20 Hz while moving
+        // and roughly 8 Hz while the snapped camera/light state is stable.
+        if(reusable && (sinceLast<0.05 || (stableCenter && stableDirection && sinceLast<0.125)))
+            return;
+        ShadowDirection=candidateShadowDirection;
         Vector3 eye = center + ShadowDirection * radius * 2.2f;
         Matrix4 lightView = Matrix4.LookAt(eye, center, up);
         Matrix4 lightProjection = Matrix4.CreateOrthographicOffCenter(-radius, radius, -radius, radius, 0.5f, radius * 5f);
@@ -848,6 +892,13 @@ public sealed class EnhancedShaderLoader : IExternalLoader
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, previousFramebuffer);
         GL.Viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
         ShadowMapActive = drawnCasters > 0;
+        if(ShadowMapActive)
+        {
+            LastShadowRender=now;
+            LastShadowCenter=center;
+            LastRenderedShadowDirection=ShadowDirection;
+            LastShadowRadius=radius;
+        }
         if ((DateTime.UtcNow - LastShadowDiagnostic).TotalSeconds > 10)
         {
             LastShadowDiagnostic = DateTime.UtcNow;
@@ -875,6 +926,8 @@ public sealed class EnhancedShaderLoader : IExternalLoader
             GL.DeleteFramebuffer(ShadowFramebuffer);
 
         CurrentShadowResolution = resolution;
+        ShadowMapActive = false;
+        LastShadowRender = DateTime.MinValue;
         ShadowFramebuffer = GL.GenFramebuffer();
         ShadowDepthTexture = GL.GenTexture();
         int previousActiveTexture;

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.13.2 - 2026-09-05
+
+- Reduced Aurora's GPU cost by caching directional and local shadow maps,
+  lowering the local shadow cubemap resolution and throttling stable redraws.
+- Reduced volumetric cloud, god-ray, reflection, underwater-particle and AO
+  sample counts while preserving the existing visual effects.
+- Added a balanced Aurora profile as the default for new installations.
+- Fixed warm self-lighting on a torch held in first person.
+- Stabilised moving torch shadows by sampling the cubemap from the exact light
+  position used during its most recent render.
+- Added smooth biome-aware colour grading that removes the excessive cyan cast
+  from desert skies and distance fog without warming other biomes.
+
 ## 0.13.1 - 2026-09-05
 
 - Fixed runtime UI icon placement by converting logical top-left atlas coordinates

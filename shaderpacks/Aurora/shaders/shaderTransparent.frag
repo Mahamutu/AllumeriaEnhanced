@@ -30,6 +30,7 @@ uniform float ae_saturation;
 uniform float ae_contrast;
 uniform float ae_fogStrength;
 uniform float ae_biomeFog;
+uniform float ae_biomeWarmth;
 uniform float ae_reflections;
 uniform float ae_reflectionStrength;
 uniform int ae_raySteps;
@@ -81,12 +82,12 @@ bool traceScreenReflection(vec3 origin, vec3 direction, out vec2 hitUV, out floa
     if(delta.y< -0.000001)endT=min(endT,(0.002-a.y)/delta.y);
     endT=clamp(endT,0.0,1.0);
     float pixels=max(abs(delta.x)*screenRes.x,abs(delta.y)*screenRes.y)*endT;
-    int count=int(clamp(ceil(pixels),16.0,float(clamp(ae_raySteps*4,16,192))));
+    int count=int(clamp(ceil(pixels),12.0,float(clamp(ae_raySteps*3,12,96))));
     float invA=1.0/ca.w,invB=1.0/cb.w;
     vec3 qa=start*invA,qb=finish*invB;
     mat4 inverseProjection=inverse(projection);
     float lastT=0.0;
-    for(int i=0;i<192;i++){
+    for(int i=0;i<96;i++){
         if(i>=count)break;
         float t=endT*(float(i)+1.0)/float(count);
         vec2 uv=a+delta*t;
@@ -100,7 +101,7 @@ bool traceScreenReflection(vec3 origin, vec3 direction, out vec2 hitUV, out floa
         if(i>0 && !masked && depth<0.9999 &&
             min(prevZ,currZ)<=sceneZ+thickness && max(prevZ,currZ)>=sceneZ){
             float low=lastT,high=t;
-            for(int j=0;j<6;j++){
+            for(int j=0;j<3;j++){
                 float mid=(low+high)*0.5;
                 vec2 mUV=a+delta*mid;
                 float mDepth=texture(texture5,mUV).r;
@@ -137,6 +138,8 @@ vec3 atmosphericScattering(vec3 viewRay, float distanceToCamera)
     vec3 baseAtmosphere = mix(fogColor.rgb, fogMidColor.rgb, clamp(abs(viewRay.y) * 1.6, 0.0, 1.0));
     float atmosphereLuma=dot(baseAtmosphere,vec3(0.2126,0.7152,0.0722));
     baseAtmosphere=mix(vec3(atmosphereLuma),baseAtmosphere,0.65);
+    float desertDay=ae_biomeWarmth*smoothstep(0.02,0.28,ae_sunDirection.y);
+    baseAtmosphere=mix(baseAtmosphere,baseAtmosphere*vec3(1.05,1.0,0.76),desertDay*0.78);
     vec3 rayleigh = vec3(0.135, 0.16, 0.19) * rayleighPhase * horizon * 0.20;
     vec3 mie = vec3(1.0, 0.55, 0.22) * miePhase * 0.014 * (0.3 + horizon * 0.7);
     // Low-amplitude directional gradient, coloured by the native biome/day palette.
@@ -180,7 +183,7 @@ uniform float ae_waterSurface;
 uniform float ae_cloudTime;
 vec3 underwaterParticles(vec3 ray,float sceneDistance) {
     if(ae_underwater<0.5)return vec3(0);
-    float limit=min(sceneDistance,18.0);
+    float limit=min(sceneDistance,14.0);
     if(ray.y>0.001)limit=min(limit,max((ae_waterSurface-viewPos.y)/ray.y,0.0));
     vec3 origin=viewPos-vec3(0,ae_cloudTime*0.08,0);
     vec3 cell=floor(origin/0.8), stepDir=sign(ray);
@@ -188,7 +191,7 @@ vec3 underwaterParticles(vec3 ray,float sceneDistance) {
     vec3 nextT=((cell+step(vec3(0),ray))*0.8-origin)/safeRay;
     vec3 deltaT=abs(vec3(0.8)/safeRay);
     float t=0.0, glow=0.0;
-    for(int i=0;i<40;i++){
+    for(int i=0;i<16;i++){
         if(t>limit)break;
         float seed=fract(sin(dot(cell,vec3(17.13,61.7,29.3)))*43758.5453);
         if(seed>0.72){
@@ -223,8 +226,8 @@ vec3 volumetricShafts(vec3 ray, float rayLength)
         float segment=min(rayLength,20.0);
         if(ray.y>0.001)segment=min(segment,max(0.0,(ae_waterSurface-viewPos.y)/ray.y));
         float sum=0.0;
-        for(int k=0;k<24;k++) {
-            float travel=(float(k)+0.5)*segment/24.0;
+        for(int k=0;k<12;k++) {
+            float travel=(float(k)+0.5)*segment/12.0;
             vec3 p=viewPos+ray*travel;
             float depth=max(ae_waterSurface-p.y,0.0);
             vec2 entry=p.xz+lightDir.xz*depth/max(lightDir.y,0.15);
@@ -232,7 +235,7 @@ vec3 volumetricShafts(vec3 ray, float rayLength)
             float field=sin(entry.x*0.73+sin(entry.y*0.49)+ae_cloudTime*0.12)
                 *sin(entry.y*0.61-entry.x*0.27-ae_cloudTime*0.09);
             float beam=smoothstep(0.20,0.85,field);
-            sum+=beam*exp(-travel*0.06-depth*0.12)*segment/24.0;
+            sum+=beam*exp(-travel*0.06-depth*0.12)*segment/12.0;
         }
         float phase=0.5+0.5*pow(max(dot(ray,lightDir),0.0),3.0);
         return vec3(0.35,0.72,0.82)*min(sum*0.065,0.22)*sun*phase;
@@ -242,24 +245,20 @@ vec3 volumetricShafts(vec3 ray, float rayLength)
     float lengthInFog = min(rayLength,ae_underwater>0.5?24.0:96.0);
     if(ae_underwater>0.5 && ray.y>0.001)
         lengthInFog=min(lengthInFog,max(0.0,(ae_waterSurface-viewPos.y)/ray.y));
-    float ds = lengthInFog / 48.0;
+    int shaftSteps=clamp(ae_raySteps,12,24);
+    float ds = lengthInFog / float(shaftSteps);
     float illumination = 0.0;
-    for (int i = 0; i < 48; ++i)
+    for (int i = 0; i < 24; ++i)
     {
+        if(i>=shaftSteps)break;
         float jitter=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);
         float travel = (float(i) + 0.25 + 0.5*jitter) * ds;
         vec4 light = vec4(viewPos + ray * travel, 1.0) * ae_lightViewProjection;
         vec3 uvz = light.xyz / light.w * 0.5 + 0.5;
         if (all(greaterThan(uvz, vec3(0.001))) && all(lessThan(uvz, vec3(0.999))))
         {
-            vec2 size=vec2(textureSize(ae_shadowMap,0));
-            vec2 pixel=uvz.xy*size-0.5;ivec2 cell=ivec2(floor(pixel));
-            vec2 f=fract(pixel);float visible=0.0;
-            for(int sx=0;sx<2;sx++)for(int sy=0;sy<2;sy++){
-                float depth=texelFetch(ae_shadowMap,clamp(cell+ivec2(sx,sy),ivec2(0),ivec2(size)-1),0).r;
-                float w=(sx==0?1.0-f.x:f.x)*(sy==0?1.0-f.y:f.y);
-                visible+=smoothstep(-0.0002,0.0002,depth-uvz.z)*w;
-            }
+            float depth=texture(ae_shadowMap,uvz.xy).r;
+            float visible=smoothstep(-0.00035,0.00035,depth-uvz.z);
             illumination += visible * exp(-travel * mix(0.012,0.06,ae_underwater)) * ds * mix(0.012,0.085,ae_underwater);
         }
     }

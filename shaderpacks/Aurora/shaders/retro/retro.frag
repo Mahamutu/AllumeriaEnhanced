@@ -27,9 +27,9 @@ float occlusion(vec2 uv, vec3 p) {
     if(dot(n,-p)<0.0)n=-n;
     float radius=clamp(screenRes.y*0.65/max(-p.z,1.0),2.0,36.0);
     float total=0.0, weight=0.0;
-    for(int i=0;i<12;i++) {
+    for(int i=0;i<8;i++) {
         float a=float(i)*2.39996323;
-        vec2 q=uv+vec2(cos(a),sin(a))*px*radius*sqrt((float(i)+0.5)/12.0);
+        vec2 q=uv+vec2(cos(a),sin(a))*px*radius*sqrt((float(i)+0.5)/8.0);
         if(any(lessThan(q,px))||any(greaterThan(q,vec2(1)-px))||protectedAt(q))continue;
         if(texture(ae_depth,q).r>=0.99999)continue;
         vec3 v=positionAt(q)-p;
@@ -77,17 +77,18 @@ void main() {
         }
     }
     // Bounded spatial sharpening, not AMD's CAS implementation.
-    vec3 n=texture(texture0,texCoord+vec2(0,px.y)).rgb;
-    vec3 s=texture(texture0,texCoord-vec2(0,px.y)).rgb;
-    vec3 e=texture(texture0,texCoord+vec2(px.x,0)).rgb;
-    vec3 w=texture(texture0,texCoord-vec2(px.x,0)).rgb;
-    vec3 lo=min(src.rgb,min(min(n,s),min(e,w)));
-    vec3 hi=max(src.rgb,max(max(n,s),max(e,w)));
-    float detail=1.0-clamp(length(hi-lo)*1.8,0.0,1.0);
-    vec3 sharpenDelta=(src.rgb-(n+s+e+w)*0.25)*ae_sharpen*detail;
-    float postDistance=depth<0.99999?max(-positionAt(texCoord).z,0.0):10000.0;
-    float sharpenDistanceFade=1.0-smoothstep(8.0,24.0,postDistance);
-    c+=clamp(sharpenDelta,vec3(-0.018),vec3(0.018))
-        *(protect?0.0:sharpenDistanceFade);
+    if(ae_sharpen>0.001 && !protect) {
+        vec3 n=texture(texture0,texCoord+vec2(0,px.y)).rgb;
+        vec3 s=texture(texture0,texCoord-vec2(0,px.y)).rgb;
+        vec3 e=texture(texture0,texCoord+vec2(px.x,0)).rgb;
+        vec3 w=texture(texture0,texCoord-vec2(px.x,0)).rgb;
+        vec3 lo=min(src.rgb,min(min(n,s),min(e,w)));
+        vec3 hi=max(src.rgb,max(max(n,s),max(e,w)));
+        float detail=1.0-clamp(length(hi-lo)*1.8,0.0,1.0);
+        vec3 sharpenDelta=(src.rgb-(n+s+e+w)*0.25)*ae_sharpen*detail;
+        float postDistance=depth<0.99999?max(-positionAt(texCoord).z,0.0):10000.0;
+        float sharpenDistanceFade=1.0-smoothstep(8.0,24.0,postDistance);
+        c+=clamp(sharpenDelta,vec3(-0.018),vec3(0.018))*sharpenDistanceFade;
+    }
     outputColor=vec4(clamp(c,0.0,1.0),src.a);
 }
