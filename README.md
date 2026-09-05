@@ -1,4 +1,4 @@
-# Allumeria Enhanced
+ ![Image Alt]([image_url](https://github.com/Mahamutu/AllumeriaEnhanced/blob/main/Allumeria%20Enhanced%20banner.png?raw=true))
 
 Created by **Mahamutu**.
 
@@ -7,8 +7,7 @@ Allumeria Enhanced is a source-available shader loader and visual overhaul for
 **Aurora** and **Classic**.
 
 Aurora provides the full visual feature set. Classic keeps the game's original
-look while adding restrained lighting and atmosphere. Both packs have their own
-16x16 pixel-art icon and can define independent default settings.
+look while adding restrained lighting and atmosphere.
 
 ## Features
 
