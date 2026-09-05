@@ -1,0 +1,36 @@
+name: Validate shader packs
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifests and assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $packs = Get-ChildItem shaderpacks -Directory
+          if ($packs.Count -lt 4) { throw 'Expected at least four shader packs.' }
+          foreach ($pack in $packs) {
+            $manifest = Get-Content -Raw (Join-Path $pack.FullName 'pack.json') | ConvertFrom-Json
+            if (-not $manifest.name) { throw "Missing pack name: $($pack.Name)" }
+            if (-not (Test-Path (Join-Path $pack.FullName $manifest.icon))) {
+              throw "Missing icon: $($pack.Name)"
+            }
+            if (-not (Test-Path (Join-Path $pack.FullName 'shaders'))) {
+              throw "Missing shaders: $($pack.Name)"
+            }
+          }
+          Add-Type -AssemblyName System.Drawing
+          Get-ChildItem shaderpacks -Filter icon.png -Recurse | ForEach-Object {
+            $image = [Drawing.Image]::FromFile($_.FullName)
+            try {
+              if ($image.Width -ne 16 -or $image.Height -ne 16) {
+                throw "Icon must be 16x16: $($_.FullName)"
+              }
+            } finally { $image.Dispose() }
+          }

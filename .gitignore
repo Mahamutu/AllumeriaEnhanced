@@ -1,0 +1,23 @@
+# Build output
+**/bin/
+**/obj/
+build/
+release/
+*.dll
+*.pdb
+
+# Local game/runtime material
+original-shaders/
+backup*/
+backups/
+decompiled-reference/
+shadow-diagnostics.log
+settings.json
+
+# Editors and OS
+.vs/
+.idea/
+.vscode/
+*.user
+Thumbs.db
+.DS_Store

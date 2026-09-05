@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Loader</AssemblyName>
+    <RootNamespace>AllumeriaEnhanced</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllumeriaGameDir Condition="'$(AllumeriaGameDir)' == ''">$(ALLUMERIA_GAME_DIR)</AllumeriaGameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Allumeria">
+      <HintPath>$(AllumeriaGameDir)\Allumeria.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="OpenTK.Windowing.Common">
+      <HintPath>$(AllumeriaGameDir)\OpenTK.Windowing.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="OpenTK.Windowing.GraphicsLibraryFramework">
+      <HintPath>$(AllumeriaGameDir)\OpenTK.Windowing.GraphicsLibraryFramework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="OpenTK.Graphics">
+      <HintPath>$(AllumeriaGameDir)\OpenTK.Graphics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="OpenTK.Mathematics">
+      <HintPath>$(AllumeriaGameDir)\OpenTK.Mathematics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

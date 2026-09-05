@@ -1,0 +1,89 @@
+# Allumeria Enhanced
+
+Created by **mahamutu**.
+
+Allumeria Enhanced is a source-available shader loader and visual overhaul for
+**Allumeria 0.15**. It ships with two selectable raster shader packs:
+**Aurora** and **Classic**.
+
+Aurora provides the full visual feature set. Classic keeps the game's original
+look while adding restrained lighting and atmosphere. Both packs have their own
+16x16 pixel-art icon and can define independent default settings.
+
+## Features
+
+- directional sun and moon shadow maps;
+- moving cloud shadows;
+- atmospheric and distance fog;
+- sun and moon god rays;
+- water reflections, refraction, depth tinting and caustics;
+- underwater particles and animated light shafts;
+- coloured local lighting for torches, lava and emissive objects;
+- animated foliage with stabilized shadow handling;
+- optional Aurora ambient occlusion, sharpening and depth of field;
+- in-game configuration, presets and F8 shader reloading.
+
+Allumeria exposes an OpenGL 3.3 raster pipeline. The project uses shadow maps,
+screen-space ray marching and volumetric sampling rather than hardware ray
+tracing.
+
+## Requirements
+
+- Allumeria 0.15 for Windows;
+- an OpenGL 3.3 compatible graphics card;
+- a clean or backed-up copy of the game's original `res/shaders` directory.
+
+## Installation
+
+Download the current release archive and follow
+[docs/INSTALLATION.md](docs/INSTALLATION.md). Close the game before replacing
+`Loader.dll`. Press **F8** to reload edited shader files; loader updates require
+a full game restart.
+
+## Shader packs
+
+| Pack | Purpose |
+| --- | --- |
+| Aurora | Full atmospheric, water, shadow and post-processing feature set. |
+| Classic | Restrained effects that stay closer to the original presentation. |
+
+See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for settings and
+[docs/SHADER_PACKS.md](docs/SHADER_PACKS.md) for custom pack metadata.
+
+## Project structure
+
+```text
+assets/                 Mod and settings icon
+shaderpacks/Aurora/     Aurora icon, manifest and shaders
+shaderpacks/Classic/    Classic icon, manifest and shaders
+src/                    C# loader source
+docs/                   English documentation
+install.ps1             Source-checkout installer
+uninstall.ps1           Restores the backed-up original shaders
+```
+
+The game assemblies and game-owned assets are intentionally excluded. The
+separate Polish game translation is not part of this repository.
+
+## Building from source
+
+Install the .NET 10 SDK and run:
+
+```powershell
+dotnet build src/AllumeriaEnhanced.Loader.csproj -c Release -p:AllumeriaGameDir="C:\path\to\Allumeria"
+```
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) before submitting changes.
+
+## License
+
+This project is licensed under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). You may use, study, modify and
+redistribute it for permitted noncommercial purposes. Commercial use requires
+separate permission from the copyright holders.
+
+Because commercial use is restricted, this is a **source-available** project
+rather than OSI-approved open-source software. Allumeria and its game assets
+remain the property of their respective owners and are not licensed here.
+
+Polish documentation is available in [README_PL.md](README_PL.md).
