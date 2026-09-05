@@ -71,20 +71,8 @@ if [ $(ls -1 "$TEMP_EXTRACT" | wc -l) -eq 1 ] && [ -d "$TEMP_EXTRACT"/* ]; then
     SOURCE_DIR="$TEMP_EXTRACT"/*
 fi
 
-TARGET_SHADERS_DIR="$INSTALL_DIR/res/shaders"
-BACKUP_DIR="$INSTALL_DIR/res/shaders_backup"
-
-if [ -d "$TARGET_SHADERS_DIR" ]; then
-    if [ ! -d "$BACKUP_DIR" ]; then
-        echo -e "\033[33mCreating backup of original shaders at: $BACKUP_DIR\033[0m"
-        cp -r "$TARGET_SHADERS_DIR" "$BACKUP_DIR"
-    fi
-else
-    mkdir -p "$TARGET_SHADERS_DIR"
-fi
-
-echo -e "\033[32mInstalling Allumeria Enhanced...\033[0m"
-cp -r "$SOURCE_DIR"/* "$TARGET_SHADERS_DIR/"
+echo -e "\033[32mInstalling Allumeria Enhanced into game root...\033[0m"
+cp -r "$SOURCE_DIR"/* "$INSTALL_DIR/"
 
 # Cleanup
 rm -f "$TEMP_ZIP"
