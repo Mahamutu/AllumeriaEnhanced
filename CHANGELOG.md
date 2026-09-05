@@ -1,5 +1,15 @@
 # Changelog
 
+## Installer hotfix - 2026-09-05
+
+- Fixed the Linux installer's literal `*` source path that caused
+  `cp: cannot stat '/tmp/AllumeriaEnhanced_Extract/*/.'`.
+- Linux now downloads the compiled ZIP asset from the latest GitHub release
+  instead of the source-code zipball, and verifies that `mods/Loader.dll` is
+  present before copying files.
+- Replaced fixed shared temporary paths with a unique `mktemp` directory and
+  automatic cleanup.
+
 ## 0.13.3 - 2026-09-05
 
 - Automatically recompiles and activates the selected shader pack once the game

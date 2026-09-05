@@ -29,11 +29,9 @@ ALLUMERIA_GAME_PATH="/mnt/games/SteamLibrary/steamapps/common/Allumeria" \
 ```
 
 The Windows installer checks Steam's registered library folders automatically.
-The installers download
-`Allumeria-Enhanced-Aurora-Classic-current.zip` from the latest GitHub
-release, preserve `res/shaders` on first installation and move an existing
-shader-pack directory to a timestamped backup before installing Aurora and
-Classic.
+The installers query the latest GitHub release and download its ZIP asset.
+The archive must contain `mods/Loader.dll` and the Aurora and Classic shader
+packs.
 
 ## Release archive
 
@@ -73,7 +71,7 @@ Build the loader as described in the main README, then run:
 On Linux:
 
 ```sh
-./install.sh --game-path "/path/to/steamapps/common/Allumeria"
+ALLUMERIA_GAME_PATH="/path/to/steamapps/common/Allumeria" ./install.sh
 ```
 
 The installer preserves `res/shaders` as the local baseline the first time it
