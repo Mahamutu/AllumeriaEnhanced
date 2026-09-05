@@ -1,6 +1,6 @@
 # Allumeria Enhanced
 
-Created by **mahamutu**.
+Created by **Mahamutu**.
 
 Allumeria Enhanced is a source-available shader loader and visual overhaul for
 **Allumeria 0.15**. It ships with two selectable raster shader packs:
