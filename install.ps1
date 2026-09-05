@@ -1,126 +1,113 @@
-[CmdletBinding()]
-param(
-    [string]$GamePath = $env:ALLUMERIA_GAME_PATH,
-    [string]$ArchiveUrl = 'https://github.com/Mahamutu/AllumeriaEnhanced/releases/latest/download/Allumeria-Enhanced-Aurora-Classic-current.zip'
-)
+# Allumeria Enhanced Windows Installer
+# Requires PowerShell 5.1+
 
-$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
+$ErrorActionPreference = "Stop"
 
-function Find-Allumeria {
-    param([string]$RequestedPath)
+$RepoUser = "Mahamutu"
+$RepoName = "AllumeriaEnhanced"
+$UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AllumeriaInstaller"
 
-    $candidates = [System.Collections.Generic.List[string]]::new()
-    if ($RequestedPath) {
-        $candidates.Add($RequestedPath)
-    }
-    $candidates.Add((Get-Location).Path)
-    if (${env:ProgramFiles(x86)}) {
-        $candidates.Add((Join-Path ${env:ProgramFiles(x86)} 'Steam\steamapps\common\Allumeria'))
-    }
-    if ($env:ProgramFiles) {
-        $candidates.Add((Join-Path $env:ProgramFiles 'Steam\steamapps\common\Allumeria'))
+function Get-GamePath {
+    if ($env:ALLUMERIA_GAME_PATH -and (Test-Path $env:ALLUMERIA_GAME_PATH)) {
+        return $env:ALLUMERIA_GAME_PATH
     }
 
-    $steamRoots = [System.Collections.Generic.List[string]]::new()
-    foreach ($registryPath in @(
-        'HKCU:\Software\Valve\Steam',
-        'HKLM:\Software\WOW6432Node\Valve\Steam',
-        'HKLM:\Software\Valve\Steam'
-    )) {
-        try {
-            $steam = Get-ItemProperty -LiteralPath $registryPath -ErrorAction Stop
-            if ($steam.SteamPath) { $steamRoots.Add($steam.SteamPath) }
-            if ($steam.InstallPath) { $steamRoots.Add($steam.InstallPath) }
-        }
-        catch {
-            # Steam may not be registered in every location.
+    $SteamPaths = @(
+        "C:\Program Files (x86)\Steam\steamapps\common\Allumeria",
+        "C:\Program Files\Steam\steamapps\common\Allumeria",
+        "D:\SteamLibrary\steamapps\common\Allumeria",
+        "E:\SteamLibrary\steamapps\common\Allumeria"
+    )
+
+    foreach ($path in $SteamPaths) {
+        if (Test-Path $path) {
+            return $path
         }
     }
 
-    foreach ($steamRoot in $steamRoots) {
-        $candidates.Add((Join-Path $steamRoot 'steamapps\common\Allumeria'))
-        $libraryFile = Join-Path $steamRoot 'steamapps\libraryfolders.vdf'
-        if (-not (Test-Path -LiteralPath $libraryFile)) { continue }
-        $vdf = Get-Content -Raw -LiteralPath $libraryFile
-        foreach ($match in [regex]::Matches($vdf, '"path"\s+"([^"]+)"')) {
-            $libraryRoot = $match.Groups[1].Value.Replace('\\', '\')
-            $candidates.Add((Join-Path $libraryRoot 'steamapps\common\Allumeria'))
+    # Try searching Steam libraryfolders.vdf if default paths fail
+    $VdfPath = "C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf"
+    if (Test-Path $VdfPath) {
+        $vdfContent = Get-Content $VdfPath
+        foreach ($line in $vdfContent) {
+            if ($line -match '"path"\s+"([^"]+)"') {
+                $libPath = Join-Path $matches[1] "steamapps\common\Allumeria"
+                if (Test-Path $libPath) {
+                    return $libPath
+                }
+            }
         }
     }
 
-    foreach ($candidate in $candidates) {
-        if ($candidate -and (Test-Path -LiteralPath (Join-Path $candidate 'Allumeria.exe'))) {
-            return (Resolve-Path -LiteralPath $candidate).Path
-        }
-    }
-
-    throw 'Allumeria was not found. Set ALLUMERIA_GAME_PATH or run with -GamePath "C:\path\to\Allumeria".'
+    return $null
 }
 
-function Copy-DirectoryContents {
-    param([string]$Source, [string]$Destination)
-    if (-not (Test-Path -LiteralPath $Source)) {
-        throw "Required directory is missing: $Source"
-    }
-    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-    Get-ChildItem -LiteralPath $Source -Force | Copy-Item -Destination $Destination -Recurse -Force
+$InstallDir = Get-GamePath
+
+if (-not $InstallDir) {
+    Write-Error "Could not automatically locate the Allumeria installation folder.`nPlease set the ALLUMERIA_GAME_PATH environment variable to your game directory and run this script again."
+    exit 1
 }
 
-$game = Find-Allumeria $GamePath
-if (Get-Process -Name Allumeria -ErrorAction SilentlyContinue) {
-    throw 'Close Allumeria completely before installing.'
-}
+Write-Host "Found Allumeria directory at: $InstallDir" -ForegroundColor Green
 
-$scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-$sourceRoot = $scriptRoot
-$temporaryRoot = $null
+# Fetch Latest Release Metadata
+$ApiUrl = "https://api.github.com/repos/$RepoUser/$RepoName/releases/latest"
+Write-Host "Checking for latest release..." -ForegroundColor Cyan
 
 try {
-    if (-not (Test-Path -LiteralPath (Join-Path $sourceRoot 'mods\Loader.dll'))) {
-        $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ('AllumeriaEnhanced-' + [Guid]::NewGuid().ToString('N'))
-        $archive = Join-Path $temporaryRoot 'Allumeria-Enhanced.zip'
-        $sourceRoot = Join-Path $temporaryRoot 'package'
-        New-Item -ItemType Directory -Force -Path $sourceRoot | Out-Null
-        Write-Host 'Downloading the latest Allumeria Enhanced release...'
-        Invoke-WebRequest -UseBasicParsing -Uri $ArchiveUrl -OutFile $archive
-        Expand-Archive -LiteralPath $archive -DestinationPath $sourceRoot -Force
-    }
-
-    $loader = Join-Path $sourceRoot 'mods\Loader.dll'
-    $packageMod = Join-Path $sourceRoot 'mods\AllumeriaEnhanced'
-    if (-not (Test-Path -LiteralPath $loader)) {
-        throw 'The downloaded package does not contain mods\Loader.dll.'
-    }
-
-    $modRoot = Join-Path $game 'mods\AllumeriaEnhanced'
-    $baseline = Join-Path $modRoot 'original-shaders'
-    New-Item -ItemType Directory -Force -Path $modRoot | Out-Null
-    if (-not (Test-Path -LiteralPath $baseline)) {
-        Copy-Item -LiteralPath (Join-Path $game 'res\shaders') -Destination $baseline -Recurse
-    }
-
-    $oldPacks = Join-Path $modRoot 'shaderpacks'
-    if (Test-Path -LiteralPath $oldPacks) {
-        $packBackup = Join-Path $modRoot ('shaderpacks.backup-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-        Move-Item -LiteralPath $oldPacks -Destination $packBackup
-    }
-
-    Copy-DirectoryContents (Join-Path $packageMod 'shaderpacks') (Join-Path $modRoot 'shaderpacks')
-    Copy-DirectoryContents (Join-Path $packageMod 'assets') (Join-Path $modRoot 'assets')
-    foreach ($file in @('README_PL.md', 'uninstall.ps1')) {
-        $sourceFile = Join-Path $packageMod $file
-        if (Test-Path -LiteralPath $sourceFile) {
-            Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $modRoot $file) -Force
-        }
-    }
-    Copy-Item -LiteralPath $loader -Destination (Join-Path $game 'mods\Loader.dll') -Force
-
-    Write-Host "Installed Allumeria Enhanced in: $game"
-    Write-Host 'Start Allumeria and enable the mod under Settings > Allumeria Enhanced.'
+    $ReleaseData = Invoke-RestMethod -Uri $ApiUrl -UserAgent $UserAgent -Headers @{ "Accept" = "application/vnd.github.v3+json" }
+} catch {
+    Write-Error "Failed to query GitHub API for releases: $_"
+    exit 1
 }
-finally {
-    if ($temporaryRoot -and (Test-Path -LiteralPath $temporaryRoot)) {
-        Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
-    }
+
+$Asset = $ReleaseData.assets | Where-Object { $_.name -like "*.zip" } | Select-Object -First 1
+
+if (-not $Asset) {
+    Write-Error "No valid .zip release asset found in the latest GitHub release."
+    exit 1
 }
+
+$ArchiveUrl = $Asset.browser_download_url
+$TempZip = Join-Path $env:TEMP "AllumeriaEnhanced_latest.zip"
+$TempExtract = Join-Path $env:TEMP "AllumeriaEnhanced_Extract"
+
+Write-Host "Downloading latest Allumeria Enhanced release ($($Asset.name))..." -ForegroundColor Cyan
+Invoke-WebRequest -UseBasicParsing -UserAgent $UserAgent -Uri $ArchiveUrl -OutFile $TempZip
+
+if (Test-Path $TempExtract) {
+    Remove-Item $TempExtract -Recurse -Force
+}
+
+Write-Host "Extracting files..." -ForegroundColor Cyan
+Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
+
+# Locate extracted contents (handles both top-level files and nested folders)
+$SourcePath = $TempExtract
+$ChildItems = Get-ChildItem $TempExtract
+if ($ChildItems.Count -eq 1 -and $ChildItems[0].PSIsContainer) {
+    $SourcePath = $ChildItems[0].FullName
+}
+
+$TargetShadersDir = Join-Path $InstallDir "res\shaders"
+
+# Backup existing shaders if not already backed up
+$BackupDir = Join-Path $InstallDir "res\shaders_backup"
+if (Test-Path $TargetShadersDir) {
+    if (-not (Test-Path $BackupDir)) {
+        Write-Host "Creating backup of original shaders at: $BackupDir" -ForegroundColor Yellow
+        Copy-Item -Path $TargetShadersDir -Destination $BackupDir -Recurse -Force
+    }
+} else {
+    New-Item -ItemType Directory -Path $TargetShadersDir -Force | Out-Null
+}
+
+Write-Host "Installing Allumeria Enhanced..." -ForegroundColor Green
+Copy-Item -Path "$SourcePath\*" -Destination $TargetShadersDir -Recurse -Force
+
+# Cleanup
+Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
+Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host "`nAllumeria Enhanced successfully installed!" -ForegroundColor Green
