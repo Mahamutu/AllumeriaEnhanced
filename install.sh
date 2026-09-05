@@ -1,88 +1,92 @@
-#!/usr/bin/env sh
-set -eu
+#!/usr/bin/env bash
+set -e
 
-archive_url=${ALLUMERIA_ENHANCED_URL:-https://github.com/Mahamutu/AllumeriaEnhanced/releases/latest/download/Allumeria-Enhanced-Aurora-Classic-current.zip}
-game_path=${ALLUMERIA_GAME_PATH:-}
+REPO_USER="Mahamutu"
+REPO_NAME="AllumeriaEnhanced"
+USER_AGENT="Mozilla/5.0 (X11; Linux x86_64) AllumeriaInstaller"
 
-while [ "$#" -gt 0 ]; do
-    case "$1" in
-        --game-path)
-            [ "$#" -ge 2 ] || { echo "Missing value for --game-path" >&2; exit 2; }
-            game_path=$2
-            shift 2
-            ;;
-        *)
-            echo "Unknown option: $1" >&2
-            exit 2
-            ;;
-    esac
-done
-
-find_game() {
-    if [ -n "$game_path" ] && [ -f "$game_path/Allumeria.exe" ]; then
-        printf '%s\n' "$game_path"
+# Locate Game Directory
+find_game_dir() {
+    if [ -n "$ALLUMERIA_GAME_PATH" ] && [ -d "$ALLUMERIA_GAME_PATH" ]; then
+        echo "$ALLUMERIA_GAME_PATH"
         return
     fi
 
-    for candidate in \
-        "$PWD" \
-        "$HOME/.local/share/Steam/steamapps/common/Allumeria" \
-        "$HOME/.steam/steam/steamapps/common/Allumeria" \
+    POSSIBLE_PATHS=(
+        "$HOME/.local/share/Steam/steamapps/common/Allumeria"
+        "$HOME/.steam/steam/steamapps/common/Allumeria"
         "$HOME/.steam/root/steamapps/common/Allumeria"
-    do
-        if [ -f "$candidate/Allumeria.exe" ]; then
-            printf '%s\n' "$candidate"
+        "/run/media/mmcblk0p1/steamapps/common/Allumeria"
+    )
+
+    for path in "${POSSIBLE_PATHS[@]}"; do
+        if [ -d "$path" ]; then
+            echo "$path"
             return
         fi
     done
 
-    echo "Allumeria was not found. Set ALLUMERIA_GAME_PATH to its Steam directory." >&2
-    exit 1
+    echo ""
 }
 
-command -v curl >/dev/null 2>&1 || { echo "curl is required." >&2; exit 1; }
-command -v unzip >/dev/null 2>&1 || { echo "unzip is required." >&2; exit 1; }
+INSTALL_DIR=$(find_game_dir)
 
-game_path=$(find_game)
-if command -v pgrep >/dev/null 2>&1 && pgrep -f "$game_path/Allumeria.exe" >/dev/null 2>&1; then
-    echo "Close Allumeria completely before installing." >&2
+if [ -z "$INSTALL_DIR" ]; then
+    echo -e "\031[31mError: Could not automatically locate the Allumeria installation folder.\033[0m"
+    echo "Please set ALLUMERIA_GAME_PATH to your game directory and run this script again."
     exit 1
 fi
 
-temporary_root=$(mktemp -d)
-trap 'rm -rf "$temporary_root"' EXIT HUP INT TERM
-archive="$temporary_root/Allumeria-Enhanced.zip"
-package="$temporary_root/package"
-mkdir -p "$package"
+echo -e "\033[32mFound Allumeria directory at: $INSTALL_DIR\033[0m"
 
-echo "Downloading the latest Allumeria Enhanced release..."
-curl -fL "$archive_url" -o "$archive"
-unzip -q "$archive" -d "$package"
+# Fetch Latest Release from GitHub API
+API_URL="https://api.github.com/repos/$REPO_USER/$REPO_NAME/releases/latest"
+echo "Checking for latest release..."
 
-[ -f "$package/mods/Loader.dll" ] || {
-    echo "The downloaded package does not contain mods/Loader.dll." >&2
+RELEASE_JSON=$(curl -sSL -A "$USER_AGENT" -H "Accept: application/vnd.github.v3+json" "$API_URL")
+
+DOWNLOAD_URL=$(echo "$RELEASE_JSON" | grep -o '"browser_download_url": "[^"]*' | grep '\.zip"' | head -n 1 | cut -d '"' -f 4)
+
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo -e "\033[31mError: Failed to find a valid .zip asset in the latest release.\033[0m"
     exit 1
-}
-
-mod_root="$game_path/mods/AllumeriaEnhanced"
-mkdir -p "$mod_root"
-if [ ! -d "$mod_root/original-shaders" ]; then
-    cp -a "$game_path/res/shaders" "$mod_root/original-shaders"
 fi
 
-if [ -d "$mod_root/shaderpacks" ]; then
-    mv "$mod_root/shaderpacks" "$mod_root/shaderpacks.backup-$(date +%Y%m%d-%H%M%S)"
+TEMP_ZIP="/tmp/AllumeriaEnhanced_latest.zip"
+TEMP_EXTRACT="/tmp/AllumeriaEnhanced_Extract"
+
+echo "Downloading latest release..."
+curl -fL -A "$USER_AGENT" -o "$TEMP_ZIP" "$DOWNLOAD_URL"
+
+rm -rf "$TEMP_EXTRACT"
+mkdir -p "$TEMP_EXTRACT"
+
+echo "Extracting files..."
+unzip -q "$TEMP_ZIP" -d "$TEMP_EXTRACT"
+
+# Handle top-level directory wrapper if present
+SOURCE_DIR="$TEMP_EXTRACT"
+if [ $(ls -1 "$TEMP_EXTRACT" | wc -l) -eq 1 ] && [ -d "$TEMP_EXTRACT"/* ]; then
+    SOURCE_DIR="$TEMP_EXTRACT"/*
 fi
 
-mkdir -p "$mod_root/shaderpacks" "$mod_root/assets" "$game_path/mods"
-cp -a "$package/mods/AllumeriaEnhanced/shaderpacks/." "$mod_root/shaderpacks/"
-cp -a "$package/mods/AllumeriaEnhanced/assets/." "$mod_root/assets/"
-for file in README_PL.md uninstall.ps1; do
-    if [ -f "$package/mods/AllumeriaEnhanced/$file" ]; then
-        cp -f "$package/mods/AllumeriaEnhanced/$file" "$mod_root/$file"
+TARGET_SHADERS_DIR="$INSTALL_DIR/res/shaders"
+BACKUP_DIR="$INSTALL_DIR/res/shaders_backup"
+
+if [ -d "$TARGET_SHADERS_DIR" ]; then
+    if [ ! -d "$BACKUP_DIR" ]; then
+        echo -e "\033[33mCreating backup of original shaders at: $BACKUP_DIR\033[0m"
+        cp -r "$TARGET_SHADERS_DIR" "$BACKUP_DIR"
     fi
-done
-cp -f "$package/mods/Loader.dll" "$game_path/mods/Loader.dll"
+else
+    mkdir -p "$TARGET_SHADERS_DIR"
+fi
 
-echo "Installed Allumeria Enhanced in: $game_path"
-echo "Start the game through Steam and enable the mod under Settings > Allumeria Enhanced."
+echo -e "\033[32mInstalling Allumeria Enhanced...\033[0m"
+cp -r "$SOURCE_DIR"/* "$TARGET_SHADERS_DIR/"
+
+# Cleanup
+rm -f "$TEMP_ZIP"
+rm -rf "$TEMP_EXTRACT"
+
+echo -e "\n\033[32mAllumeria Enhanced successfully installed!\033[0m"
