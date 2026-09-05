@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.3 - 2026-09-05
+
+- Automatically recompiles and activates the selected shader pack once the game
+  render context is ready; F8 is no longer required after launching the game.
+- Keeps depth of field disabled by default and moves its optional blur much
+  farther into the background with a smaller, smoother depth-aware kernel.
+- Adds a restrained, high-threshold midday bloom lift without affecting dawn,
+  night, underwater scenes or first-person held items.
+- Added the missing desktop-windowing and image-library build references so the
+  loader builds reproducibly with the .NET 10 SDK.
+
 ## 0.13.2 - 2026-09-05
 
 - Added one-command installers for Windows PowerShell and Linux/Steam Proton.

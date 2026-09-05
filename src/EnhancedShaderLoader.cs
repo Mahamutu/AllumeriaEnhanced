@@ -114,7 +114,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
             Name = "Allumeria Enhanced attach"
         };
         attachThread.Start();
-        Logger.Info("[Allumeria Enhanced] Loader 0.13.2 live-reload initialized.");
+        Logger.Info("[Allumeria Enhanced] Loader 0.13.3 automatic-start reload initialized.");
     }
 
     private static void WaitForGameAndAttach()
@@ -123,6 +123,9 @@ public sealed class EnhancedShaderLoader : IExternalLoader
             Thread.Sleep(25);
         Game.game.UpdateFrame += OnUpdateFrame;
         Game.game.RenderFrame += OnRenderFrame;
+        // Init can run after the game has already compiled its original programs.
+        // Queue one render-thread rebuild so the selected pack is active on every launch.
+        RuntimeReloadPending = true;
         Logger.Info("[Allumeria Enhanced] Runtime controls attached.");
     }
 
@@ -529,6 +532,9 @@ public sealed class EnhancedShaderLoader : IExternalLoader
         shader.SetUniformFloat("ae_ao",submerged?0f:Clamp(Settings.AmbientOcclusion,0f,1f));
         shader.SetUniformFloat("ae_sharpen",submerged?0f:Clamp(Settings.Sharpening,0f,1f));
         shader.SetUniformFloat("ae_dof",!submerged && Settings.DepthOfField?1f:0f);
+        float midday = Math.Clamp((SunDirection.Y - 0.55f) / 0.35f, 0f, 1f);
+        midday = midday * midday * (3f - 2f * midday);
+        shader.SetUniformFloat("ae_middayBloom", submerged ? 0f : midday * 0.055f);
         GL.ActiveTexture((TextureUnit)previous);
     }
 

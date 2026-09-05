@@ -22,12 +22,20 @@
       <HintPath>$(AllumeriaGameDir)\OpenTK.Windowing.GraphicsLibraryFramework.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="OpenTK.Windowing.Desktop">
+      <HintPath>$(AllumeriaGameDir)\OpenTK.Windowing.Desktop.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="OpenTK.Graphics">
       <HintPath>$(AllumeriaGameDir)\OpenTK.Graphics.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="OpenTK.Mathematics">
       <HintPath>$(AllumeriaGameDir)\OpenTK.Mathematics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="StbImageSharp">
+      <HintPath>$(AllumeriaGameDir)\StbImageSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

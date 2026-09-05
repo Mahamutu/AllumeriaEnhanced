@@ -5,7 +5,7 @@ in vec4 fragColor;
 uniform sampler2D texture0, ae_depth, ae_waterColor, ae_handMask;
 uniform mat4 ae_inverseProjection;
 uniform vec2 screenRes;
-uniform float ae_postEnabled, ae_ao, ae_sharpen, ae_dof, ae_maskValid;
+uniform float ae_postEnabled, ae_ao, ae_sharpen, ae_dof, ae_maskValid, ae_middayBloom;
 // World-only post pass. Spatial AO, contrast-adaptive sharpening and optional far DoF.
 // Deliberately no temporal jitter/history: this is not TAA or ray tracing.
 vec3 positionAt(vec2 uv) {
@@ -62,14 +62,16 @@ void main() {
         c*=aoFactor;
         // Far-only, depth-aware gather; foreground and held items stay sharp.
         if(ae_dof>0.0) {
-            float focus=clamp(-positionAt(vec2(0.5)).z,4.0,100.0);
-            float blur=smoothstep(focus+12.0,focus+80.0,-p.z)*2.5*ae_dof;
-            vec3 sum=c;float weights=1.0;
-            for(int i=0;i<8;i++){
-                float a=float(i)*0.78539816;
-                vec2 q=clamp(texCoord+vec2(cos(a),sin(a))*px*blur,px,vec2(1)-px);
+            float focus=clamp(-positionAt(vec2(0.5)).z,24.0,140.0);
+            float blur=smoothstep(focus+32.0,focus+150.0,-p.z)*1.65*ae_dof;
+            vec3 sum=c*1.6;float weights=1.6;
+            for(int i=0;i<12;i++){
+                float fi=float(i)+0.5;
+                float a=fi*2.39996323;
+                float radius=sqrt(fi/12.0)*blur;
+                vec2 q=clamp(texCoord+vec2(cos(a),sin(a))*px*radius,px,vec2(1)-px);
                 float qz=-positionAt(q).z;
-                float w=(1.0-smoothstep(2.0,8.0,abs(qz+p.z)))*(protectedAt(q)?0.0:1.0);
+                float w=(1.0-smoothstep(4.0,18.0,abs(qz+p.z)))*(protectedAt(q)?0.0:1.0);
                 sum+=texture(texture0,q).rgb*aoFactor*w;
                 weights+=w;
             }
@@ -89,6 +91,21 @@ void main() {
         float postDistance=depth<0.99999?max(-positionAt(texCoord).z,0.0):10000.0;
         float sharpenDistanceFade=1.0-smoothstep(8.0,24.0,postDistance);
         c+=clamp(sharpenDelta,vec3(-0.018),vec3(0.018))*sharpenDistanceFade;
+    }
+    // Very small high-threshold glow at noon. It keeps texture detail and does
+    // not brighten dawn, night, underwater scenes or held items.
+    if(ae_middayBloom>0.001 && !protect) {
+        vec3 bloom=vec3(0.0);
+        float bloomWeight=0.0;
+        for(int i=0;i<4;i++) {
+            float a=float(i)*1.57079633+0.78539816;
+            vec2 q=clamp(texCoord+vec2(cos(a),sin(a))*px*3.25,px,vec2(1)-px);
+            vec3 sampleColor=texture(texture0,q).rgb;
+            float bright=smoothstep(0.72,0.96,max(sampleColor.r,max(sampleColor.g,sampleColor.b)));
+            bloom+=sampleColor*bright;
+            bloomWeight+=bright;
+        }
+        c+=bloom/max(bloomWeight,1.0)*ae_middayBloom*min(bloomWeight/2.0,1.0);
     }
     outputColor=vec4(clamp(c,0.0,1.0),src.a);
 }

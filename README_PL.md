@@ -1,4 +1,4 @@
-# Allumeria Enhanced - Aurora 0.13.0-test (loader 0.13.1)
+# Allumeria Enhanced - Aurora 0.13.3 (loader 0.13.3)
 
 ## Loader i ustawienia 0.13.1
 
