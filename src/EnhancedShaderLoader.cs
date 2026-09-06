@@ -114,7 +114,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
             Name = "Allumeria Enhanced attach"
         };
         attachThread.Start();
-        Logger.Info("[Allumeria Enhanced] Loader 0.13.3 automatic-start reload initialized.");
+        Logger.Info("[Allumeria Enhanced] Loader 0.13.4 automatic-start reload initialized.");
     }
 
     private static void WaitForGameAndAttach()
@@ -438,7 +438,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
     private static readonly System.Reflection.FieldInfo? WorldRendererField =
         typeof(Game).GetField("worldRenderer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
     private static Vector3 CloudTint = Vector3.One;
-    private static float BiomeFog = 1f, BiomeWarmth;
+    private static float BiomeFog = 1f, BiomeWarmth, BiomeSnow;
     private static float Underwater, WaterSurface, MoonStrength, MoonPhase, MoonIllumination, MorningRays;
     private static Vector3 MoonDirection=Vector3.UnitY;
     private static void UpdateEnvironment(double dt)
@@ -474,6 +474,8 @@ public sealed class EnhancedShaderLoader : IExternalLoader
         BiomeFog += (target - BiomeFog) * (1f - MathF.Exp(-(float)Math.Clamp(dt,0,0.1)*0.8f));
         float warmthTarget = biome == 3 ? 1f : 0f;
         BiomeWarmth += (warmthTarget - BiomeWarmth) * (1f - MathF.Exp(-(float)Math.Clamp(dt,0,0.1)*0.9f));
+        float snowTarget = biome == 2 ? 1f : 0f;
+        BiomeSnow += (snowTarget - BiomeSnow) * (1f - MathF.Exp(-(float)Math.Clamp(dt,0,0.1)*1.6f));
     }
 
     private static int ViewModelMask, MaskWidth, MaskHeight, MaskFramebuffer;
@@ -603,6 +605,7 @@ public sealed class EnhancedShaderLoader : IExternalLoader
         shader.SetUniformVec3("ae_cloudTint", CloudTint);
         shader.SetUniformFloat("ae_biomeFog", BiomeFog);
         shader.SetUniformFloat("ae_biomeWarmth", BiomeWarmth);
+        shader.SetUniformFloat("ae_biomeSnow", BiomeSnow);
         shader.SetUniform1i("ae_viewModelMask",8);
         shader.SetUniformFloat("ae_maskReady",ViewModelMask!=0?1f:0f);
         shader.SetUniformFloat("ae_firstPerson",Game.clientState?.player?.thirdPerson==false?1f:0f);

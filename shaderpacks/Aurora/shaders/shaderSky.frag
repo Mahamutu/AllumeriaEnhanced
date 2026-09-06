@@ -17,6 +17,7 @@ uniform float ae_moonRayStrength;
 uniform float ae_warmth;
 uniform float ae_underwater;
 uniform float ae_biomeWarmth;
+uniform float ae_biomeSnow;
 
 uniform sampler2D ae_shadowMap;
 uniform float ae_shadowMapEnabled;
@@ -58,6 +59,40 @@ vec3 volumetricShafts(vec3 ray, float rayLength)
 }
 uniform float ae_cloudTime;
 uniform vec3 ae_cloudTint;
+float auroraHash(vec2 p) {
+    return fract(sin(dot(p,vec2(41.73,289.11)))*43758.5453);
+}
+float pixelAuroraCurtain(float azimuth, float elevation, float phase, float offset) {
+    const float PI=3.14159265;
+    float column=floor((azimuth+PI)*34.0)/34.0-PI;
+    float row=floor(max(elevation,0.0)*64.0)/64.0;
+    float ridge=0.72+sin(column*2.2+phase+offset)*0.14
+        +sin(column*5.1-phase*0.46+offset*1.7)*0.055;
+    float crown=1.0-smoothstep(0.035,0.085,abs(row-ridge));
+    float veil=smoothstep(ridge-0.42,ridge-0.16,row)
+        *(1.0-smoothstep(ridge-0.12,ridge+0.015,row))*0.48;
+    float cell=auroraHash(vec2(floor((azimuth+PI)*34.0),floor(row*64.0)+offset*7.0));
+    return max(crown,veil)*mix(0.70,1.0,step(0.28,cell));
+}
+vec3 pixelAurora(vec3 ray) {
+    if(ae_biomeSnow<0.01 || ae_underwater>0.5 || ray.y<=0.035)return vec3(0.0);
+    const float PI=3.14159265;
+    float night=1.0-smoothstep(-0.08,0.12,ae_sunDirection.y);
+    float visibility=night*ae_biomeSnow
+        *smoothstep(0.035,0.16,ray.y)*(1.0-smoothstep(0.91,0.995,ray.y));
+    if(visibility<0.001)return vec3(0.0);
+    float azimuth=atan(ray.z,ray.x);
+    float elevation=asin(clamp(ray.y,-1.0,1.0));
+    float phase=ae_cloudTime*0.075;
+    float first=pixelAuroraCurtain(azimuth,elevation,phase,0.0);
+    float second=pixelAuroraCurtain(azimuth+0.78,elevation-0.10,-phase*0.72,2.4)*0.72;
+    float third=pixelAuroraCurtain(azimuth-1.04,elevation+0.07,phase*0.54,4.8)*0.55;
+    float curtain=max(first,max(second,third));
+    float palette=0.5+0.5*sin(floor((azimuth+PI)*18.0)/18.0*3.0+phase);
+    vec3 colour=mix(vec3(0.24,1.0,0.77),vec3(0.92,0.24,1.0),
+        smoothstep(0.34,0.78,palette));
+    return colour*curtain*visibility*0.72;
+}
 float cloudHash(vec2 p) {
     return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
 }
@@ -177,6 +212,7 @@ void main()
     vec3 scattered = vertexCol.rgb + (rayleigh + mie*0.25) * ae_fogStrength*sunVisibility*waterVisibility
         + volumetricShafts(viewDirection,96.0)*waterVisibility;
     scattered += vec3(0.32, 0.09, 0.015) * horizon * (1.0 - clamp(ae_sunDirection.y, 0.0, 1.0)) * 0.24;
+    scattered += pixelAurora(viewDirection);
     float desertDay=ae_biomeWarmth*sunVisibility;
     scattered=mix(scattered,scattered*vec3(1.045,1.0,0.76),desertDay*0.78);
     scattered *= vec3(1.0 + ae_warmth * 0.03, 1.0, 1.0 - ae_warmth * 0.025);

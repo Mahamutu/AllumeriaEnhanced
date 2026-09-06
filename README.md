@@ -15,6 +15,7 @@ look while adding restrained lighting and atmosphere.
 - moving cloud shadows;
 - atmospheric and distance fog;
 - sun and moon god rays;
+- animated square-pixel aurora in the snow biome at night;
 - water reflections, refraction, depth tinting and caustics;
 - underwater particles and animated light shafts;
 - coloured local lighting for torches, lava and emissive objects;
@@ -28,14 +29,13 @@ tracing.
 
 ## Requirements
 
-- Allumeria 0.15 for Windows, or the Windows release running through Steam
-  Proton on Linux;
+- Allumeria 0.15 for Windows;
 - an OpenGL 3.3 compatible graphics card;
 - a clean or backed-up copy of the game's original `res/shaders` directory.
 
 ## Installation
 
-Close Allumeria, then use one of these commands.
+Close Allumeria, then use this command.
 
 Windows PowerShell:
 
@@ -67,7 +67,6 @@ shaderpacks/Classic/    Classic icon, manifest and shaders
 src/                    C# loader source
 docs/                   English documentation
 install.ps1             Source-checkout installer
-install.sh              Linux/Steam Proton installer
 uninstall.ps1           Restores the backed-up original shaders
 ```
 

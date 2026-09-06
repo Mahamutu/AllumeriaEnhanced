@@ -49,10 +49,3 @@ jobs:
             (Resolve-Path 'install.ps1'), [ref]$tokens, [ref]$errors
           ) | Out-Null
           if ($errors.Count) { throw ($errors | Out-String) }
-
-  validate-linux-installer:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate Linux installer syntax
-        run: sh -n install.sh

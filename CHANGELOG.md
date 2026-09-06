@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added a biome-aware animated aurora made from square pixel curtains. It is
+  visible at night in the snow biome in both Aurora and Classic.
+- Stabilized Classic's moving held-torch shadows by sampling the cubemap from
+  its last rendered light position and using its actual 256px face size.
+- Removed the Linux command installer and its documentation. Release archives
+  now include only the Windows installer and manual installation files.
+
 ## Installer hotfix - 2026-09-05
 
 - Fixed the Linux installer's literal `*` source path that caused

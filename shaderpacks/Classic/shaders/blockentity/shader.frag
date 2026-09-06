@@ -85,13 +85,15 @@ uniform samplerCube ae_localShadow;
 uniform float ae_localActive;
 uniform float ae_localRange;
 uniform vec3 ae_localPosition;
+uniform vec3 ae_localShadowPosition;
 uniform vec3 ae_localColor;
 vec3 cubeTexelDirection(vec3 v) {
     vec3 a=abs(v); vec2 st; int face;
     if(a.x>=a.y && a.x>=a.z){face=v.x>0.0?0:1;st=vec2(v.x>0.0?-v.z:v.z,-v.y)/a.x;}
     else if(a.y>=a.z){face=v.y>0.0?2:3;st=vec2(v.x,v.y>0.0?v.z:-v.z)/a.y;}
     else{face=v.z>0.0?4:5;st=vec2(v.z>0.0?v.x:-v.x,-v.y)/a.z;}
-    st=(clamp(floor((st*0.5+0.5)*512.0),vec2(0),vec2(511))+0.5)/512.0*2.0-1.0;
+    float size=float(textureSize(ae_localShadow,0).x);
+    st=(clamp(floor((st*0.5+0.5)*size),vec2(0),vec2(size-1.0))+0.5)/size*2.0-1.0;
     if(face==0)return normalize(vec3(1,-st.y,-st.x));
     if(face==1)return normalize(vec3(-1,-st.y,st.x));
     if(face==2)return normalize(vec3(st.x,1,st.y));
@@ -101,7 +103,7 @@ vec3 cubeTexelDirection(vec3 v) {
 }
 vec3 localDirectLight(vec3 position, vec3 normal) {
     if(ae_localActive<0.5) return vec3(0.0);
-    vec3 delta=position-ae_localPosition;
+    vec3 delta=position-ae_localShadowPosition;
     float d=length(delta);
     if(d>=ae_localRange || d<0.001) return vec3(0.0);
     vec3 direction=delta/d;
@@ -112,12 +114,13 @@ vec3 localDirectLight(vec3 position, vec3 normal) {
     vec3 planeNormal=length(planeCross)>0.000001?normalize(planeCross):normalize(normal);
     float planeNumerator=dot(planeNormal,delta);
     // Account for the nearest cubemap texel footprint at grazing angles.
-    float footprintBias=min(0.06,d*(2.0/512.0)*(1.0-facing)/max(facing,0.2));
+    float cubeSize=float(textureSize(ae_localShadow,0).x);
+    float footprintBias=min(0.06,d*(2.0/cubeSize)*(1.0-facing)/max(facing,0.2));
     float bias=0.008+footprintBias;
     float visibility=0.0;
     float width=0.006+d*0.0015;
     for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++){
-        vec3 sampleDirection=normalize(direction+(tangent*float(x)+bitangent*float(y))*(2.0/512.0));
+        vec3 sampleDirection=normalize(direction+(tangent*float(x)+bitangent*float(y))*(2.0/cubeSize));
         sampleDirection=cubeTexelDirection(sampleDirection);
         float planeDenominator=dot(planeNormal,sampleDirection);
         float receiverDistance=d;
