@@ -59,39 +59,46 @@ vec3 volumetricShafts(vec3 ray, float rayLength)
 }
 uniform float ae_cloudTime;
 uniform vec3 ae_cloudTint;
-float auroraHash(vec2 p) {
-    return fract(sin(dot(p,vec2(41.73,289.11)))*43758.5453);
-}
-float pixelAuroraCurtain(float azimuth, float elevation, float phase, float offset) {
+float pixelAuroraLine(float azimuth, float elevation, float phase,
+                      float centre, float heightOffset, float phaseOffset) {
     const float PI=3.14159265;
-    float column=floor((azimuth+PI)*34.0)/34.0-PI;
-    float row=floor(max(elevation,0.0)*64.0)/64.0;
-    float ridge=0.72+sin(column*2.2+phase+offset)*0.14
-        +sin(column*5.1-phase*0.46+offset*1.7)*0.055;
-    float crown=1.0-smoothstep(0.035,0.085,abs(row-ridge));
-    float veil=smoothstep(ridge-0.42,ridge-0.16,row)
-        *(1.0-smoothstep(ridge-0.12,ridge+0.015,row))*0.48;
-    float cell=auroraHash(vec2(floor((azimuth+PI)*34.0),floor(row*64.0)+offset*7.0));
-    return max(crown,veil)*mix(0.70,1.0,step(0.28,cell));
+    float column=floor((azimuth+PI)*48.0)/48.0-PI;
+    float row=floor(max(elevation,0.0)*76.0)/76.0;
+    float local=atan(sin(column-centre),cos(column-centre));
+    float window=1.0-smoothstep(0.72,1.18,abs(local));
+    float ridge=0.68+heightOffset
+        +sin(local*2.7+phase+phaseOffset)*0.075
+        +sin(local*5.3-phase*0.42+phaseOffset*1.6)*0.026;
+    float line=1.0-smoothstep(0.012,0.034,abs(row-ridge));
+    float segment=0.84+0.16*sin(floor((local+1.25)*18.0)*0.91
+        +phase*1.7+phaseOffset);
+    return line*window*segment;
 }
 vec3 pixelAurora(vec3 ray) {
     if(ae_biomeSnow<0.01 || ae_underwater>0.5 || ray.y<=0.035)return vec3(0.0);
     const float PI=3.14159265;
     float night=1.0-smoothstep(-0.08,0.12,ae_sunDirection.y);
     float visibility=night*ae_biomeSnow
-        *smoothstep(0.035,0.16,ray.y)*(1.0-smoothstep(0.91,0.995,ray.y));
+        *smoothstep(0.035,0.16,ray.y)*(1.0-smoothstep(0.84,0.97,ray.y));
     if(visibility<0.001)return vec3(0.0);
     float azimuth=atan(ray.z,ray.x);
     float elevation=asin(clamp(ray.y,-1.0,1.0));
-    float phase=ae_cloudTime*0.075;
-    float first=pixelAuroraCurtain(azimuth,elevation,phase,0.0);
-    float second=pixelAuroraCurtain(azimuth+0.78,elevation-0.10,-phase*0.72,2.4)*0.72;
-    float third=pixelAuroraCurtain(azimuth-1.04,elevation+0.07,phase*0.54,4.8)*0.55;
-    float curtain=max(first,max(second,third));
-    float palette=0.5+0.5*sin(floor((azimuth+PI)*18.0)/18.0*3.0+phase);
-    vec3 colour=mix(vec3(0.24,1.0,0.77),vec3(0.92,0.24,1.0),
-        smoothstep(0.34,0.78,palette));
-    return colour*curtain*visibility*0.72;
+    float phase=ae_cloudTime*0.052;
+    float centreA=-0.55+sin(phase*0.23)*0.10;
+    float centreB=2.30+sin(phase*0.17+1.8)*0.08;
+    float mint=max(
+        pixelAuroraLine(azimuth,elevation,phase,centreA,-0.10,0.0),
+        pixelAuroraLine(azimuth,elevation,-phase*0.83,centreA,0.07,2.1));
+    float violet=max(
+        pixelAuroraLine(azimuth,elevation,phase*0.74,centreA,-0.015,4.0),
+        pixelAuroraLine(azimuth,elevation,-phase*0.66,centreB,-0.055,1.3)*0.55);
+    mint=max(mint,pixelAuroraLine(azimuth,elevation,phase*0.58,
+        centreB,0.035,3.2)*0.48);
+    float crossing=min(mint,violet);
+    vec3 colour=vec3(0.31,0.91,0.76)*mint
+        +vec3(0.62,0.30,0.76)*violet*0.58
+        +vec3(0.30,0.72,0.76)*crossing*0.12;
+    return colour*visibility*0.42;
 }
 float cloudHash(vec2 p) {
     return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);

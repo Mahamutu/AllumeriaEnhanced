@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added a biome-aware animated aurora made from square pixel curtains. It is
+- Added a biome-aware animated aurora made from localized, interwoven square-pixel lines. It is
   visible at night in the snow biome in both Aurora and Classic.
 - Stabilized Classic's moving held-torch shadows by sampling the cubemap from
   its last rendered light position and using its actual 256px face size.

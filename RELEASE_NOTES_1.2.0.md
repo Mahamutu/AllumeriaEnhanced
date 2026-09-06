@@ -1,6 +1,6 @@
 # Allumeria Enhanced v1.2.0
 
-- Added an animated square-pixel aurora at night in the snow biome for Aurora
+- Added animated, interwoven square-pixel aurora lines at night in the snow biome for Aurora
   and Classic.
 - Fixed moving held-torch shadow-map flicker in Classic.
 - Removed the Linux command installer and Linux installer references.
