@@ -1,6 +1,6 @@
 {
   "name": "Aurora",
-  "version": "0.13.8",
+  "version": "0.13.9",
   "description": "Advanced raster experiment: post-processing, cloud self-shadowing, atmospheric scattering, chromatic water absorption and foliage wrap lighting.",
   "icon": "icon.png",
   "settings": {

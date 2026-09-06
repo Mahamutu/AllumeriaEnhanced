@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Enriched Aurora without deforming its silhouette: layered emerald-violet-ice
+  colour currents, stable pixel-edge highlights and slow per-layer breathing
+  now give the curtains more depth than the original game effect.
 - Restored Aurora's authored game silhouette after contour thresholding made
   shallow viewing angles collapse into long straight rails; animation is now
   a subtle square-pixel luminance pulse that does not deform the geometry.

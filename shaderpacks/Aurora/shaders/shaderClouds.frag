@@ -53,10 +53,12 @@ void main()
         // straight rails when seen at a shallow angle.
         float source=texture(texture0,texCoord).r;
         vec2 pixelCell=floor(texCoord*64.0);
-        float pixelPulse=0.94+0.06*sin(pixelCell.x*0.39+pixelCell.y*0.61
-            +ae_cloudTime*0.55+density*19.0);
+        float layer=clamp((density-0.05)/(0.007*39.0),0.0,1.0);
+        float pixelPulse=0.90+0.10*(0.5+0.5*sin(pixelCell.x*0.31
+            +pixelCell.y*0.53-ae_cloudTime*0.42+layer*5.4));
+        float layerBreath=0.94+0.06*sin(layer*17.0+ae_cloudTime*0.20);
         float alpha=visibility*source/max(density*2.0,0.001)*intensity
-            *pixelPulse;
+            *pixelPulse*layerBreath;
 
         // Approximate the custom cloud layer along this view ray so gaps show
         // the aurora while filled clouds correctly pass in front of it.
@@ -78,7 +80,21 @@ void main()
         }
         alpha*=cloudTransmission;
         if(alpha<0.001)discard;
-        vec3 colour=mix(cloudColor.rgb,vec3(0.39,0.91,0.78),0.06);
+        // A stable one-texel edge accent and a slowly travelling square-pixel
+        // colour current add depth without moving the authored silhouette.
+        float neighbour=texture(texture0,clamp(texCoord+vec2(1.0/128.0,0.0),
+            vec2(0.004),vec2(0.996))).r;
+        float edgeGlow=smoothstep(0.035,0.22,abs(source-neighbour));
+        float colourFlow=0.5+0.5*sin(pixelCell.x*0.19-pixelCell.y*0.11
+            -ae_cloudTime*0.16+layer*7.0);
+        vec3 violet=vec3(0.62,0.24,0.88);
+        vec3 emerald=vec3(0.18,0.94,0.70);
+        vec3 ice=vec3(0.64,0.88,1.0);
+        vec3 palette=mix(violet,emerald,
+            clamp(layer*0.78+colourFlow*0.28,0.0,1.0));
+        palette=mix(palette,ice,edgeGlow*0.42);
+        vec3 colour=mix(cloudColor.rgb,palette,0.34);
+        colour*=0.90+0.10*smoothstep(0.08,0.70,source)+0.14*edgeGlow;
         outputColor=vec4(colour,clamp(alpha,0.0,0.82));
         return;
     }
