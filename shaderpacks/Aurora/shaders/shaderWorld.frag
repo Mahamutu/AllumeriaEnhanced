@@ -129,6 +129,39 @@ void main()
     if (cloudTransmission < 0.001) discard;
     vec4 texelColor = texture(texture0, texCoord) * vertexCol;
 
+    // The game renders its 128x128 aurora textures on dedicated world-space
+    // geometry above the cloud layer. Enhance that object instead of drawing
+    // a camera-centred sky effect, so it keeps parallax and cloud occlusion.
+    ivec2 inputSize=textureSize(texture0,0);
+    if(all(equal(inputSize,ivec2(128))))
+    {
+       vec2 pixelUV=(floor(texCoord*64.0)+0.5)/64.0;
+       float motion=ae_cloudTime*0.11;
+       vec2 uvA=pixelUV+vec2(sin(pixelUV.y*11.0+motion)*0.018,0.0);
+       vec2 uvB=pixelUV+vec2(sin(pixelUV.y*8.0-motion*0.73+1.7)*-0.015,0.012);
+       uvA=clamp(uvA,vec2(0.004),vec2(0.996));
+       uvB=clamp(uvB,vec2(0.004),vec2(0.996));
+       vec4 strandA=texture(texture0,uvA)*vertexCol;
+       vec4 strandB=texture(texture0,uvB)*vertexCol;
+       float weaveA=0.84+0.16*sin(floor(pixelUV.y*48.0)*1.07
+          +floor(pixelUV.x*32.0)*0.41+motion*1.9);
+       float weaveB=0.82+0.18*sin(floor(pixelUV.y*43.0)*1.19
+          -floor(pixelUV.x*29.0)*0.37-motion*1.5+2.1);
+       float alphaA=strandA.a*weaveA;
+       float alphaB=strandB.a*weaveB*0.44;
+       float auroraAlpha=max(alphaA,alphaB);
+       if(auroraAlpha<0.01)discard;
+       float violet=smoothstep(0.18,0.82,0.5+0.5*sin(
+          floor(pixelUV.x*24.0)*0.31+motion*0.55));
+       vec3 palette=mix(vec3(0.34,0.91,0.76),vec3(0.60,0.34,0.74),violet*0.30);
+       vec3 source=(strandA.rgb*alphaA+strandB.rgb*alphaB)
+          /max(alphaA+alphaB,0.001);
+       vec3 auroraColor=mix(source,palette,0.42);
+       float finalAlpha=auroraAlpha*cloudTransmission;
+       outputColor=vec4(auroraColor*finalAlpha,finalAlpha);
+       return;
+    }
+
     if (flashIntensity < 0.5 && texCoord.x <= 0.3751 && texCoord.y <= 0.1251)
     {
        bool isSun = texCoord.x <= 0.1251;
