@@ -17,6 +17,7 @@ uniform float ae_moonRayStrength;
 uniform float ae_warmth;
 uniform float ae_underwater;
 uniform float ae_biomeWarmth;
+uniform float ae_biomeSnow;
 
 uniform sampler2D ae_shadowMap;
 uniform float ae_shadowMapEnabled;
@@ -58,6 +59,11 @@ vec3 volumetricShafts(vec3 ray, float rayLength)
 }
 uniform float ae_cloudTime;
 uniform vec3 ae_cloudTint;
+float winterCloudVisibility()
+{
+    float night=1.0-smoothstep(-0.20,0.18,ae_sunDirection.y);
+    return 1.0-ae_biomeSnow*night;
+}
 float cloudHash(vec2 p) {
     return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
 }
@@ -152,7 +158,9 @@ vec4 pixelCloudVolume(vec3 ray) {
         }
     }
     float fade=1.0-smoothstep(450.0,850.0,enter);
-    return vec4(accumulated*fade,(1.0-transmittance)*fade);
+    float winterFade=winterCloudVisibility();
+    return vec4(accumulated*fade*winterFade,
+        (1.0-transmittance)*fade*winterFade);
 }
 void main()
 {
