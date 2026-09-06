@@ -21,6 +21,21 @@ void main()
 {
     ae_objectMask=vec4(0,0,0,1);
     float cloud = texture(texture0, texCoord).r;
+    float d = length(viewPos - fragPosition);
+    float visibility = clamp((fogEnd - d) / max(fogEnd - fogStart, 0.001), 0.0, 1.0);
+    visibility = visibility * visibility * (3.0 - 2.0 * visibility);
+
+    // The game renders its aurora through this shader with intensity below
+    // 0.5. Keep the original formula so Classic never turns those layers
+    // into softened cloud rectangles.
+    if(intensity < 0.5)
+    {
+        float auroraAlpha=visibility*cloud/max(density*2.0,0.001)*intensity;
+        if(auroraAlpha<0.001)discard;
+        outputColor=vec4(cloudColor.rgb,clamp(auroraAlpha,0.0,1.0));
+        return;
+    }
+
     float hardMask = cloud >= density ? 1.0 : 0.0;
     float edgeWidth = max(mix(0.012, 0.045, ae_cloudSoftness), fwidth(cloud) * 1.25);
     float softMask = smoothstep(density - edgeWidth, density + edgeWidth, cloud);
@@ -29,9 +44,6 @@ void main()
     if (mask < 0.01)
         discard;
 
-    float d = length(viewPos - fragPosition);
-    float visibility = clamp((fogEnd - d) / max(fogEnd - fogStart, 0.001), 0.0, 1.0);
-    visibility = visibility * visibility * (3.0 - 2.0 * visibility);
     float vanillaAlpha = visibility * cloud / max(density * 2.0, 0.001) * intensity;
     float textureDensity = clamp(cloud / max(density * 1.55, 0.001), 0.0, 1.0);
     vec2 gradient = vec2(dFdx(cloud), dFdy(cloud));

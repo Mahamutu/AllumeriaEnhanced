@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed the shared cloud/aurora render path: Classic now preserves the game's
+  original aurora formula without cloud-softening artifacts, while Aurora no
+  longer discards the game's 40 world-space aurora layers and masks them behind
+  its volumetric clouds.
 - Aurora now enhances the game's world-space aurora object with animated,
   interwoven square-pixel strands and correct cloud occlusion. Classic keeps
   only the original game aurora without a duplicate sky effect.
