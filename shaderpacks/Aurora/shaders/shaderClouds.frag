@@ -48,24 +48,15 @@ void main()
 
     if(auroraPass)
     {
-        float layer=(density-0.05)/0.007;
-        float motion=ae_cloudTime*0.075;
-        vec2 pixelUV=(floor(texCoord*64.0)+0.5)/64.0;
-        vec2 uvA=pixelUV+vec2(sin(pixelUV.y*10.0+motion+layer*0.13)*0.012,0.0);
-        vec2 uvB=pixelUV+vec2(sin(pixelUV.y*8.0-motion*0.71+layer*0.19)*-0.010,0.010);
-        float strandA=texture(texture0,clamp(uvA,vec2(0.004),vec2(0.996))).r;
-        float strandB=texture(texture0,clamp(uvB,vec2(0.004),vec2(0.996))).r;
-        float weave=0.86+0.14*sin(floor(pixelUV.x*32.0)*0.47
-            +floor(pixelUV.y*48.0)*1.03+motion*1.7+layer*0.22);
-        // Each of the game's forty layers draws only a narrow contour from
-        // the source texture. This produces separate woven ribbons instead
-        // of stacking the layers into one huge cyan sheet.
-        float bandA=1.0-smoothstep(0.010,0.030,abs(strandA-density));
-        float bandB=1.0-smoothstep(0.012,0.034,abs(strandB-density));
-        float ribbon=max(bandA*weave,bandB*0.48);
-        float layerStrength=smoothstep(0.0,0.045,intensity)
-            *(1.0-0.28*smoothstep(0.20,0.28,intensity));
-        float alpha=visibility*ribbon*layerStrength*0.43;
+        // Preserve the game's authored aurora silhouette. Changing the UV or
+        // threshold per layer turns its forty translucent slices into long
+        // straight rails when seen at a shallow angle.
+        float source=texture(texture0,texCoord).r;
+        vec2 pixelCell=floor(texCoord*64.0);
+        float pixelPulse=0.94+0.06*sin(pixelCell.x*0.39+pixelCell.y*0.61
+            +ae_cloudTime*0.55+density*19.0);
+        float alpha=visibility*source/max(density*2.0,0.001)*intensity
+            *pixelPulse;
 
         // Approximate the custom cloud layer along this view ray so gaps show
         // the aurora while filled clouds correctly pass in front of it.
@@ -87,8 +78,8 @@ void main()
         }
         alpha*=cloudTransmission;
         if(alpha<0.001)discard;
-        vec3 colour=mix(cloudColor.rgb,vec3(0.39,0.91,0.78),0.12);
-        outputColor=vec4(colour,clamp(alpha,0.0,0.68));
+        vec3 colour=mix(cloudColor.rgb,vec3(0.39,0.91,0.78),0.06);
+        outputColor=vec4(colour,clamp(alpha,0.0,0.82));
         return;
     }
 

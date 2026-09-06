@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Rebuilt Aurora's forty game-rendered layers as narrow animated texture
-  contours, preventing broad cyan sheets and oversized black cloud cutouts.
+- Restored Aurora's authored game silhouette after contour thresholding made
+  shallow viewing angles collapse into long straight rails; animation is now
+  a subtle square-pixel luminance pulse that does not deform the geometry.
 - Added a gradual winter-biome cloud fade across sunset and sunrise; visible
   clouds and their celestial occlusion now disappear together during the night.
 - Fixed the shared cloud/aurora render path: Classic now preserves the game's
